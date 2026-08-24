@@ -264,4 +264,63 @@ export class GameManager {
     this.io.to(room.roomId).emit('game:playerReconnected', playerId);
     return engine.getClientView(player.seatIndex);
   }
+
+  public handleReplacePlayerWithBot(playerId: string): void {
+    const session = this.findSessionByPlayerId(playerId);
+    if (!session) return;
+
+    const { engine, room } = session;
+    const roomPlayer = room.players.find((p) => p.id === playerId);
+    if (!roomPlayer) return;
+
+    roomPlayer.isBot = true;
+    roomPlayer.name = `${roomPlayer.name} (Bot)`;
+    
+    const engineState = engine.getState();
+    const enginePlayer = engineState.players.find((p) => p.id === playerId);
+    if (enginePlayer) {
+      enginePlayer.isBot = true;
+      enginePlayer.name = `${enginePlayer.name} (Bot)`;
+    }
+
+    this.broadcastGameUpdate(engine, room);
+
+    // If it's currently this player's turn or passing phase, let bot take over
+    if (engineState.phase === 'PASSING') {
+      this.handleBotPassing(engine, room);
+    } else if (engineState.phase === 'PLAYER_TURN') {
+      this.checkAndExecuteBotTurns(engine, room);
+    }
+  }
+
+  public handleExitAndEndGame(playerId: string): void {
+    const session = this.findSessionByPlayerId(playerId);
+    if (!session) return;
+
+    const { engine, room } = session;
+    const roomPlayer = room.players.find((p) => p.id === playerId);
+    const leavingName = roomPlayer ? roomPlayer.name : 'A player';
+
+    this.activeGames.delete(engine.getState().gameId);
+
+    this.io.to(room.roomId).emit('game:abandoned', {
+      message: `${leavingName} left the game. The game has ended.`,
+      leftPlayerName: leavingName,
+    });
+  }
+
+  public handleHostEndGame(playerId: string): void {
+    const session = this.findSessionByPlayerId(playerId);
+    if (!session) return;
+
+    const { engine, room } = session;
+    if (room.hostPlayerId !== playerId) return;
+
+    this.activeGames.delete(engine.getState().gameId);
+
+    this.io.to(room.roomId).emit('game:abandoned', {
+      message: `The host ended the game.`,
+      leftPlayerName: room.players.find((p) => p.id === playerId)?.name || 'Host',
+    });
+  }
 }

@@ -24,6 +24,10 @@ export interface GameTableProps {
   onSubmitPass: (cardIds: string[]) => void;
   onAutoPass: () => void;
   onLeaveGame: () => void;
+  onReplaceWithBot?: () => void;
+  onExitAndEndGame?: () => void;
+  onHostEndGame?: () => void;
+  isHost?: boolean;
   onOpenRules: () => void;
   tableTheme?: string;
 }
@@ -34,9 +38,14 @@ export const GameTable: React.FC<GameTableProps> = ({
   onSubmitPass,
   onAutoPass,
   onLeaveGame,
+  onReplaceWithBot,
+  onExitAndEndGame,
+  onHostEndGame,
+  isHost = false,
   onOpenRules,
   tableTheme = 'emerald',
 }) => {
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
   const [selectedPassCardIds, setSelectedPassCardIds] = useState<string[]>([]);
   const [showScoreDrawer, setShowScoreDrawer] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(sounds.isEnabled());
@@ -276,7 +285,13 @@ export const GameTable: React.FC<GameTableProps> = ({
 
           <button
             type="button"
-            onClick={onLeaveGame}
+            onClick={() => {
+              if (onReplaceWithBot || onExitAndEndGame) {
+                setShowExitConfirmModal(true);
+              } else {
+                onLeaveGame();
+              }
+            }}
             className="p-1.5 xs:p-2 rounded-lg sm:rounded-xl bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-300 border border-slate-700 hover:border-rose-700 transition"
             title="Exit Game"
           >
@@ -508,6 +523,75 @@ export const GameTable: React.FC<GameTableProps> = ({
             >
               Back to Table
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Exit Game Confirmation Modal */}
+      {showExitConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="relative w-full max-w-md bg-[#1E293B] border border-slate-700 rounded-3xl p-6 shadow-2xl flex flex-col gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-white">Leave Match?</h3>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                Choose how you want to exit the current online match.
+              </p>
+            </div>
+
+            <div className="space-y-2.5 pt-1">
+              {onReplaceWithBot && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExitConfirmModal(false);
+                    onReplaceWithBot();
+                    onLeaveGame();
+                  }}
+                  className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex flex-col items-start transition shadow-md"
+                >
+                  <span>Replace Myself with AI Bot</span>
+                  <span className="text-[10px] text-indigo-200 font-normal">Game continues for remaining players</span>
+                </button>
+              )}
+
+              {onExitAndEndGame && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExitConfirmModal(false);
+                    onExitAndEndGame();
+                    onLeaveGame();
+                  }}
+                  className="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex flex-col items-start transition shadow-md"
+                >
+                  <span>Exit & End Game for Everyone</span>
+                  <span className="text-[10px] text-rose-200 font-normal">Terminates the match immediately</span>
+                </button>
+              )}
+
+              {isHost && onHostEndGame && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExitConfirmModal(false);
+                    onHostEndGame();
+                    onLeaveGame();
+                  }}
+                  className="w-full py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex flex-col items-start transition shadow-md"
+                >
+                  <span>[Host] Close Room & End Game</span>
+                  <span className="text-[10px] text-amber-200 font-normal">Disbands room and returns all players to menu</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowExitConfirmModal(false)}
+                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition mt-2"
+              >
+                Cancel / Stay in Game
+              </button>
+            </div>
           </div>
         </div>
       )}

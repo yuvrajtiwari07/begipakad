@@ -71,8 +71,21 @@ export default function App() {
       setCurrentView('room_lobby');
     });
 
+    socket.on('room:joined', (room) => {
+      setCurrentRoom(room);
+      setCurrentView('room_lobby');
+    });
+
     socket.on('room:updated', (room) => {
       setCurrentRoom(room);
+    });
+
+    socket.on('room:closed', (msg) => {
+      setErrorMessage(msg);
+      setCurrentRoom(null);
+      setOnlineGameState(null);
+      setCurrentView('menu');
+      setTimeout(() => setErrorMessage(null), 5000);
     });
 
     socket.on('room:error', (msg) => {
@@ -110,6 +123,14 @@ export default function App() {
       setIsGameOverModalOpen(true);
     });
 
+    socket.on('game:abandoned', (payload) => {
+      setErrorMessage(payload.message);
+      setOnlineGameState(null);
+      setCurrentRoom(null);
+      setCurrentView('menu');
+      setTimeout(() => setErrorMessage(null), 6000);
+    });
+
     socket.on('error:message', (msg) => {
       setErrorMessage(msg);
       setTimeout(() => setErrorMessage(null), 4000);
@@ -117,12 +138,15 @@ export default function App() {
 
     return () => {
       socket.off('room:created');
+      socket.off('room:joined');
       socket.off('room:updated');
+      socket.off('room:closed');
       socket.off('room:error');
       socket.off('matchmaking:status');
       socket.off('game:started');
       socket.off('game:stateUpdate');
       socket.off('game:ended');
+      socket.off('game:abandoned');
       socket.off('error:message');
     };
   }, [profile.id, profile.name, profile.avatarSeed]);
@@ -208,11 +232,28 @@ export default function App() {
     handleOnlineSubmitPass(passCards);
   };
 
+  const handleReplaceWithBot = () => {
+    const socket = getSocket();
+    socket.emit('game:replaceWithBot');
+  };
+
+  const handleExitAndEndGame = () => {
+    const socket = getSocket();
+    socket.emit('game:exitAndEnd');
+  };
+
+  const handleHostEndGame = () => {
+    const socket = getSocket();
+    socket.emit('game:hostEndGame');
+  };
+
   const handleExitToMenu = () => {
     setCurrentView('menu');
     setOnlineGameState(null);
     setCurrentRoom(null);
   };
+
+  const isHost = Boolean(currentRoom && currentRoom.hostPlayerId === profile.id);
 
   return (
     <div className="min-h-screen bg-[#0F172A] text-slate-100 flex flex-col items-center justify-between font-sans selection:bg-indigo-600 selection:text-white">
@@ -255,6 +296,10 @@ export default function App() {
             onSubmitPass={handleOnlineSubmitPass}
             onAutoPass={handleOnlineAutoPass}
             onLeaveGame={handleExitToMenu}
+            onReplaceWithBot={handleReplaceWithBot}
+            onExitAndEndGame={handleExitAndEndGame}
+            onHostEndGame={handleHostEndGame}
+            isHost={isHost}
             onOpenRules={() => setShowHowToPlay(true)}
             tableTheme={tableTheme}
           />

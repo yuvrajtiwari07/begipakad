@@ -110,6 +110,7 @@ async function startServer() {
       }
 
       socket.join(room.roomId);
+      socket.emit('room:joined', room.toInfo());
       io.to(room.roomId).emit('room:updated', room.toInfo());
     });
 
@@ -218,6 +219,21 @@ async function startServer() {
       if (!res.success) {
         socket.emit('error:message', res.error || 'Failed to play card');
       }
+    });
+
+    socket.on('game:replaceWithBot', () => {
+      if (!currentUserId) return;
+      gameManager.handleReplacePlayerWithBot(currentUserId);
+    });
+
+    socket.on('game:exitAndEnd', () => {
+      if (!currentUserId) return;
+      gameManager.handleExitAndEndGame(currentUserId);
+    });
+
+    socket.on('game:hostEndGame', () => {
+      if (!currentUserId) return;
+      gameManager.handleHostEndGame(currentUserId);
     });
 
     socket.on('game:reconnect', (payload) => {

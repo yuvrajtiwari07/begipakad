@@ -197,12 +197,17 @@ export interface ClientToServerEvents {
   'matchmaking:leave': () => void;
   'game:submitPass': (cardIds: string[]) => void;
   'game:playCard': (cardId: string) => void;
+  'game:replaceWithBot': () => void;
+  'game:exitAndEnd': () => void;
+  'game:hostEndGame': () => void;
   'game:reconnect': (payload: { gameId: string; playerId: string }) => void;
 }
 
 export interface ServerToClientEvents {
   'room:created': (room: RoomInfo) => void;
+  'room:joined': (room: RoomInfo) => void;
   'room:updated': (room: RoomInfo) => void;
+  'room:closed': (message: string) => void;
   'room:error': (message: string) => void;
   'matchmaking:status': (status: { inQueue: boolean; playersCount: number; targetCount: number }) => void;
   'game:started': (gameState: ClientGameState) => void;
@@ -211,6 +216,7 @@ export interface ServerToClientEvents {
   'game:trickCompleted': (trick: Trick) => void;
   'game:handCompleted': (handResult: HandScoreResult) => void;
   'game:ended': (payload: { losingTeam: TeamId; winningTeam: TeamId; finalScores: Record<number, number> }) => void;
+  'game:abandoned': (payload: { message: string; leftPlayerName: string }) => void;
   'game:playerReconnected': (playerId: string) => void;
   'game:playerDisconnected': (playerId: string) => void;
   'error:message': (message: string) => void;
