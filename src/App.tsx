@@ -14,6 +14,8 @@ import {
   ArrowRight,
   Wifi,
   Sparkles,
+  Smartphone,
+  Download,
 } from 'lucide-react';
 import { ClientGameState, RoomInfo, UserProfile } from './game/types.ts';
 import { getSocket } from './networking/socket.ts';
@@ -480,6 +482,23 @@ export default function App() {
                 Queue
               </span>
             </button>
+            {/* Download Android App APK */}
+            <a
+              href="/BegiPakad.apk"
+              download="BegiPakad.apk"
+              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-400/30 text-white font-bold text-sm flex items-center justify-between transition shadow-lg shadow-emerald-900/40 group cursor-pointer no-underline"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-white/20 text-white group-hover:scale-110 transition">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span>DOWNLOAD MOBILE APP</span>
+                  <span className="text-[10px] text-emerald-100 font-normal">Android APK • Cross-Play</span>
+                </div>
+              </div>
+              <Download className="w-4 h-4 text-emerald-100 group-hover:translate-y-0.5 transition" />
+            </a>
           </div>
 
           {/* Quick Rules & Profile Trigger */}
