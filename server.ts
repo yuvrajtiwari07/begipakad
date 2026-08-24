@@ -287,6 +287,16 @@ async function startServer() {
     });
   });
 
+  // Explicit route for mobile APK download
+  app.get('/BegiPakad.apk', (req, res) => {
+    const apkPath = path.join(process.cwd(), 'public', 'BegiPakad.apk');
+    res.download(apkPath, 'BegiPakad.apk', (err) => {
+      if (err && !res.headersSent) {
+        res.status(404).send('APK file not found');
+      }
+    });
+  });
+
   // Vite middleware in dev, Static in prod
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
