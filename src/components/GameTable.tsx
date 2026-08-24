@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { sounds } from '../services/audio.ts';
 import { SUIT_NAMES } from '../game/cards.ts';
+import { getSocket } from '../networking/socket.ts';
 
 export interface GameTableProps {
   gameState: ClientGameState;
