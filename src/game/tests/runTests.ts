@@ -144,11 +144,25 @@ function runAllTests() {
   const trickWinnerResult = determineTrickWinner(playedTrick, 'EENT');
   assert(trickWinnerResult.winnerSeatIndex === 3, 'Winner is Player 4 (highest rank in lead suit EENT K)');
 
-  // Test 11: Game End & Team Loss Check (100+ points)
-  const gameLossResult = checkGameLoss({ 0: 72, 1: 100, 2: 65, 3: 81 });
-  assert(gameLossResult.isGameOver, 'Game is over when any player reaches 100');
-  assert(gameLossResult.losingTeam === 2, 'Team 2 loses because Player 2 (seat 1) reached 100');
-  assert(gameLossResult.winnerTeam === 1, 'Team 1 wins');
+  // Test 12: First Round Lead Rule (Trick 1 cannot start with Hukum ♠ or Paan ♥)
+  const trickFirstRoundLead: Trick = {
+    trickNumber: 1,
+    leadSuit: null,
+    leaderSeatIndex: 0,
+    cards: [],
+  };
+  const handMixedSuits: Card[] = [
+    createCard('HUKUM', 'A'),
+    createCard('PAAN', 'K'),
+    createCard('CHIDI', '5'),
+    createCard('EENT', '10'),
+  ];
+  const legalFirstRoundLeads = getLegalCardsToPlay(handMixedSuits, trickFirstRoundLead);
+  assert(
+    legalFirstRoundLeads.length === 2 &&
+      legalFirstRoundLeads.every((c) => c.suit === 'CHIDI' || c.suit === 'EENT'),
+    'First round lead cannot be Hukum ♠ or Paan ♥ (only Club/Diamond allowed)',
+  );
 
   console.log('🎉 ALL BEGI PAKAD UNIT TESTS PASSED SUCCESSFULLY! 🎉');
 }

@@ -8,8 +8,18 @@ export function getLegalCardsToPlay(hand: Card[], currentTrick: Trick): Card[] {
     return [];
   }
 
-  // 1. Leader plays first card of the trick: Can lead ANY card
+  // 1. Leader plays first card of the trick: Can lead ANY card EXCEPT Spades (HUKUM) or Hearts (PAAN) on Trick 1
   if (currentTrick.cards.length === 0 || !currentTrick.leadSuit) {
+    if (currentTrick.trickNumber === 1) {
+      // First round rule: Cannot lead Spades (HUKUM) or Hearts (PAAN)
+      const allowedFirstRoundCards = hand.filter(
+        (c) => c.suit === 'CHIDI' || c.suit === 'EENT',
+      );
+      // Fallback: If player only has Spades/Hearts in hand, allow any card
+      if (allowedFirstRoundCards.length > 0) {
+        return allowedFirstRoundCards;
+      }
+    }
     return hand;
   }
 
