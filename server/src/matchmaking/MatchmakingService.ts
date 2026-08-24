@@ -18,6 +18,10 @@ export class MatchmakingService {
     this.queue = this.queue.filter((p) => p.id !== playerId);
   }
 
+  public getQueuePlayers(): RoomPlayer[] {
+    return [...this.queue];
+  }
+
   public getQueueCount(): number {
     return this.queue.length;
   }

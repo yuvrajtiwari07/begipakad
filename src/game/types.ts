@@ -200,6 +200,7 @@ export interface ClientToServerEvents {
   'game:replaceWithBot': () => void;
   'game:exitAndEnd': () => void;
   'game:hostEndGame': () => void;
+  'game:sendQuickMessage': (messageText: string) => void;
   'game:reconnect': (payload: { gameId: string; playerId: string }) => void;
 }
 
@@ -217,6 +218,7 @@ export interface ServerToClientEvents {
   'game:handCompleted': (handResult: HandScoreResult) => void;
   'game:ended': (payload: { losingTeam: TeamId; winningTeam: TeamId; finalScores: Record<number, number> }) => void;
   'game:abandoned': (payload: { message: string; leftPlayerName: string }) => void;
+  'game:quickMessageReceived': (payload: { senderSeatIndex: number; senderName: string; text: string }) => void;
   'game:playerReconnected': (playerId: string) => void;
   'game:playerDisconnected': (playerId: string) => void;
   'error:message': (message: string) => void;

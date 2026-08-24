@@ -232,6 +232,11 @@ export default function App() {
     handleOnlineSubmitPass(passCards);
   };
 
+  const handleSendQuickMessage = (text: string) => {
+    const socket = getSocket();
+    socket.emit('game:sendQuickMessage', text);
+  };
+
   const handleReplaceWithBot = () => {
     const socket = getSocket();
     socket.emit('game:replaceWithBot');
@@ -299,6 +304,7 @@ export default function App() {
             onReplaceWithBot={handleReplaceWithBot}
             onExitAndEndGame={handleExitAndEndGame}
             onHostEndGame={handleHostEndGame}
+            onSendQuickMessage={handleSendQuickMessage}
             isHost={isHost}
             onOpenRules={() => setShowHowToPlay(true)}
             tableTheme={tableTheme}

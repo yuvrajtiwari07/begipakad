@@ -88,8 +88,12 @@ export const CardHand: React.FC<CardHandProps> = ({
                 key={card.id}
                 className={`transition-all duration-150 shrink-0 ${
                   index === 0 ? 'ml-1 xs:ml-2' : ''
-                } ${index === cards.length - 1 ? 'mr-1 xs:mr-2' : ''} hover:z-40 focus-within:z-40`}
-                style={{ zIndex: isSelected ? 35 : index + 1 }}
+                } ${index === cards.length - 1 ? 'mr-1 xs:mr-2' : ''} hover:z-40 focus-within:z-40 animate-in fade-in slide-in-from-bottom-6`}
+                style={{
+                  zIndex: isSelected ? 35 : index + 1,
+                  animationDelay: `${index * 35}ms`,
+                  animationFillMode: 'both',
+                }}
               >
                 <Card
                   card={card}

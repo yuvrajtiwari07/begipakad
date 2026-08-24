@@ -12,6 +12,7 @@ export interface PlayerSeatProps {
   className?: string;
   turnSecondsRemaining?: number;
   isTrickWinner?: boolean;
+  activeToastMessage?: string | null;
 }
 
 export const PlayerSeat: React.FC<PlayerSeatProps> = ({
@@ -23,6 +24,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
   className = '',
   turnSecondsRemaining,
   isTrickWinner = false,
+  activeToastMessage,
 }) => {
   const scoreZone = getScoreZone(player.score);
   const isTeam1 = player.teamId === 1;
@@ -37,6 +39,14 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
       id={`player-seat-${player.seatIndex}`}
       className={`relative flex flex-col items-center gap-1 sm:gap-1.5 transition-all duration-300 select-none ${className}`}
     >
+      {/* Quick Message Speech Bubble Toast */}
+      {activeToastMessage && (
+        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 text-xs font-black px-3 py-1 rounded-xl shadow-2xl border-2 border-slate-900 animate-bounce whitespace-nowrap z-50">
+          <span>{activeToastMessage}</span>
+          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-6 border-t-amber-400" />
+        </div>
+      )}
+
       {/* Avatar Container */}
       <div className="relative">
         <div

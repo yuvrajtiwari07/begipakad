@@ -14,6 +14,7 @@ import {
   BarChart3,
   Sparkles,
   Award,
+  MessageSquare,
 } from 'lucide-react';
 import { sounds } from '../services/audio.ts';
 import { SUIT_NAMES } from '../game/cards.ts';
@@ -27,6 +28,7 @@ export interface GameTableProps {
   onReplaceWithBot?: () => void;
   onExitAndEndGame?: () => void;
   onHostEndGame?: () => void;
+  onSendQuickMessage?: (text: string) => void;
   isHost?: boolean;
   onOpenRules: () => void;
   tableTheme?: string;
@@ -41,6 +43,7 @@ export const GameTable: React.FC<GameTableProps> = ({
   onReplaceWithBot,
   onExitAndEndGame,
   onHostEndGame,
+  onSendQuickMessage,
   isHost = false,
   onOpenRules,
   tableTheme = 'emerald',
@@ -51,6 +54,10 @@ export const GameTable: React.FC<GameTableProps> = ({
   const [soundEnabled, setSoundEnabled] = useState(sounds.isEnabled());
   const [dismissedPassHand, setDismissedPassHand] = useState<number | null>(null);
   const [turnSecondsRemaining, setTurnSecondsRemaining] = useState<number>(20);
+  const [showQuickMsgMenu, setShowQuickMsgMenu] = useState(false);
+  const [activeToasts, setActiveToasts] = useState<Record<number, string | null>>({});
+
+  const quickMessages = ['Randi', 'Lawda', 'Madarchod', 'Mauga', 'chutiya'];
 
   const mySeat = gameState.mySeatIndex;
   const isPassingPhase = gameState.phase === 'PASSING';
@@ -185,13 +192,44 @@ export const GameTable: React.FC<GameTableProps> = ({
     ? gameState.players.find((p) => p.seatIndex === gameState.lastReceivedPassedCards?.fromSeatIndex)
     : undefined;
 
+  // Quick message click handler
+  const handleQuickMsgClick = (msg: string) => {
+    setShowQuickMsgMenu(false);
+    sounds.playCardSelect();
+    if (onSendQuickMessage) {
+      onSendQuickMessage(msg);
+    } else {
+      triggerToastForSeat(mySeat, msg);
+    }
+  };
+
+  const triggerToastForSeat = (seatIndex: number, text: string) => {
+    setActiveToasts((prev) => ({ ...prev, [seatIndex]: text }));
+    setTimeout(() => {
+      setActiveToasts((prev) => ({ ...prev, [seatIndex]: null }));
+    }, 2000);
+  };
+
+  useEffect(() => {
+    const socket = getSocket();
+    const handleMsg = (payload: { senderSeatIndex: number; senderName: string; text: string }) => {
+      triggerToastForSeat(payload.senderSeatIndex, payload.text);
+    };
+
+    socket.on('game:quickMessageReceived', handleMsg);
+    return () => {
+      socket.off('game:quickMessageReceived', handleMsg);
+    };
+  }, []);
+
   // Table felt background theme style
-  const themeFeltStyles = {
-    emerald: 'bg-[#064E3B] border-[#043427]',
-    midnight: 'bg-[#0F172A] border-[#1E293B]',
-    crimson: 'bg-[#4C0519] border-[#2A020D]',
-    charcoal: 'bg-[#18181B] border-[#09090B]',
-  }[tableTheme] || 'bg-[#064E3B] border-[#043427]';
+  const themeFeltStyles =
+    {
+      emerald: 'bg-[#064E3B] border-[#043427]',
+      midnight: 'bg-[#0F172A] border-[#1E293B]',
+      crimson: 'bg-[#4C0519] border-[#2A020D]',
+      charcoal: 'bg-[#18181B] border-[#09090B]',
+    }[tableTheme] || 'bg-[#064E3B] border-[#043427]';
 
   return (
     <div className="w-full min-h-screen bg-[#0F172A] flex flex-col justify-between font-sans text-slate-100 select-none overflow-x-hidden">
@@ -243,6 +281,38 @@ export const GameTable: React.FC<GameTableProps> = ({
 
         {/* Right Controls & Live Badge */}
         <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3">
+          {/* Quick Message Dropdown Button */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowQuickMsgMenu((prev) => !prev)}
+              className="p-1.5 xs:p-2 rounded-lg sm:rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition flex items-center gap-1 text-xs font-semibold"
+              title="Send Quick Chat"
+            >
+              <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+              <span className="hidden md:inline">Taunt</span>
+            </button>
+
+            {/* Quick Messages Popup Menu */}
+            {showQuickMsgMenu && (
+              <div className="absolute right-0 top-11 z-50 w-44 bg-slate-900 border border-slate-700 rounded-2xl p-2 shadow-2xl space-y-1 animate-in fade-in zoom-in-95">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1 border-b border-slate-800">
+                  Send Quick Taunt
+                </div>
+                {quickMessages.map((msg) => (
+                  <button
+                    key={msg}
+                    type="button"
+                    onClick={() => handleQuickMsgClick(msg)}
+                    className="w-full text-left px-3 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500/20 rounded-xl transition flex items-center justify-between"
+                  >
+                    <span>{msg}</span>
+                    <span className="text-[10px] text-slate-500">💬</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="hidden sm:flex bg-slate-800 px-3 py-1.5 rounded-full border border-slate-600 items-center gap-2">
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
             <span className="text-[11px] uppercase tracking-tighter font-bold text-slate-200">
@@ -385,6 +455,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               position="top"
               turnSecondsRemaining={gameState.currentTurnSeatIndex === northPlayer.seatIndex ? turnSecondsRemaining : undefined}
               isTrickWinner={isTrickCollecting && gameState.currentTrick.winnerSeatIndex === northPlayer.seatIndex}
+              activeToastMessage={activeToasts[northPlayer.seatIndex]}
             />
           )}
         </div>
@@ -402,6 +473,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                 position="left"
                 turnSecondsRemaining={gameState.currentTurnSeatIndex === westPlayer.seatIndex ? turnSecondsRemaining : undefined}
                 isTrickWinner={isTrickCollecting && gameState.currentTrick.winnerSeatIndex === westPlayer.seatIndex}
+                activeToastMessage={activeToasts[westPlayer.seatIndex]}
               />
             )}
           </div>
@@ -442,6 +514,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                 position="right"
                 turnSecondsRemaining={gameState.currentTurnSeatIndex === eastPlayer.seatIndex ? turnSecondsRemaining : undefined}
                 isTrickWinner={isTrickCollecting && gameState.currentTrick.winnerSeatIndex === eastPlayer.seatIndex}
+                activeToastMessage={activeToasts[eastPlayer.seatIndex]}
               />
             )}
           </div>
@@ -459,6 +532,7 @@ export const GameTable: React.FC<GameTableProps> = ({
               className="mb-1"
               turnSecondsRemaining={gameState.currentTurnSeatIndex === southPlayer.seatIndex ? turnSecondsRemaining : undefined}
               isTrickWinner={isTrickCollecting && gameState.currentTrick.winnerSeatIndex === southPlayer.seatIndex}
+              activeToastMessage={activeToasts[southPlayer.seatIndex]}
             />
           )}
 

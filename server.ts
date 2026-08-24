@@ -174,7 +174,17 @@ async function startServer() {
       };
 
       const status = matchmakingService.joinQueue(player);
-      socket.emit('matchmaking:status', status);
+      // Broadcast updated count to all players currently in queue
+      const queuePlayers = matchmakingService.getQueuePlayers();
+      for (const qp of queuePlayers) {
+        if (qp.socketId) {
+          io.to(qp.socketId).emit('matchmaking:status', {
+            inQueue: true,
+            playersCount: queuePlayers.length,
+            targetCount: 4,
+          });
+        }
+      }
 
       // Check if 4 matched
       const matched = matchmakingService.getMatchedPlayers();
@@ -201,6 +211,18 @@ async function startServer() {
       if (currentUserId) {
         matchmakingService.leaveQueue(currentUserId);
         socket.emit('matchmaking:status', { inQueue: false, playersCount: 0, targetCount: 4 });
+        
+        // Broadcast updated count to remaining players in queue
+        const remaining = matchmakingService.getQueuePlayers();
+        for (const qp of remaining) {
+          if (qp.socketId) {
+            io.to(qp.socketId).emit('matchmaking:status', {
+              inQueue: true,
+              playersCount: remaining.length,
+              targetCount: 4,
+            });
+          }
+        }
       }
     });
 
@@ -219,6 +241,11 @@ async function startServer() {
       if (!res.success) {
         socket.emit('error:message', res.error || 'Failed to play card');
       }
+    });
+
+    socket.on('game:sendQuickMessage', (messageText: string) => {
+      if (!currentUserId) return;
+      gameManager.handleQuickMessage(currentUserId, messageText);
     });
 
     socket.on('game:replaceWithBot', () => {

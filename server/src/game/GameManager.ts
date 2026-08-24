@@ -323,4 +323,19 @@ export class GameManager {
       leftPlayerName: room.players.find((p) => p.id === playerId)?.name || 'Host',
     });
   }
+
+  public handleQuickMessage(playerId: string, messageText: string): void {
+    const session = this.findSessionByPlayerId(playerId);
+    if (!session) return;
+
+    const { room } = session;
+    const player = room.players.find((p) => p.id === playerId);
+    if (!player) return;
+
+    this.io.to(room.roomId).emit('game:quickMessageReceived', {
+      senderSeatIndex: player.seatIndex,
+      senderName: player.name,
+      text: messageText,
+    });
+  }
 }
