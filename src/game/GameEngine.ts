@@ -20,6 +20,7 @@ import {
 
 export class GameEngine {
   private state: FullGameState;
+  private handStartScores: Record<number, number> = {};
 
   constructor(players: Player[], gameId?: string, roomId?: string) {
     if (players.length !== 4) {
@@ -43,7 +44,7 @@ export class GameEngine {
       handNumber: 1,
       currentTrickNumber: 1,
       players: assignedPlayers,
-      playerHands: { 0: [], 1: [], 2: [], 3: [] },
+      playerHands: { 0: [], 1: [], 2: [], 3: [], },
       passingState: {
         selectedCards: {},
         submitted: { 0: false, 1: false, 2: false, 3: false },
@@ -152,9 +153,11 @@ export class GameEngine {
     this.state.currentTurnSeatIndex = leaderSeatIndex;
     this.state.lastActionMessage = `Hand ${handNumber}: 13 cards dealt. Please select 5 cards to pass.`;
 
+    this.handStartScores = {};
     for (const player of this.state.players) {
       player.tricksWonThisHand = 0;
       player.cardsRemaining = 13;
+      this.handStartScores[player.seatIndex] = player.score;
     }
   }
 
@@ -398,10 +401,18 @@ export class GameEngine {
     const zeroBonus: Record<number, boolean> = {};
     const finalScores: Record<number, number> = {};
 
+    for (const p of this.state.players) {
+      const s = p.seatIndex;
+      const initialScore = this.handStartScores[s] ?? 0;
+      startScores[s] = initialScore;
+      // Points gained during tricks of this hand before zero-ser bonus calculation
+      trickPointsGained[s] = p.score - initialScore;
+      tricksWon[s] = p.tricksWonThisHand;
+    }
+
     // 1. Calculate Zero Ser Rule: -5 for 0 tricks won
     for (const p of this.state.players) {
       const s = p.seatIndex;
-      tricksWon[s] = p.tricksWonThisHand;
       const zeroCheck = checkZeroSerBonus(p.tricksWonThisHand, p.score);
       if (zeroCheck.pointsDelta < 0) {
         zeroBonus[s] = true;

@@ -1,124 +1,249 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
-const SUIT_SYMBOLS = {
-  HUKUM: '♠',
-  PAAN: '♥',
-  EENT: '♦',
-  CHIDI: '♣',
+const SUIT_NAMES = {
+  HUKUM: { en: 'Spades', hi: 'Hukum', symbol: '♠', isRed: false },
+  PAAN: { en: 'Hearts', hi: 'Paan', symbol: '♥', isRed: true },
+  EENT: { en: 'Diamonds', hi: 'Eent', symbol: '♦', isRed: true },
+  CHIDI: { en: 'Clubs', hi: 'Chidi', symbol: '♣', isRed: false },
 };
 
-const SUIT_COLORS = {
-  HUKUM: '#0F172A',
-  PAAN: '#DC2626',
-  EENT: '#DC2626',
-  CHIDI: '#0F172A',
+const CARD_SIZES = {
+  sm: { width: 44, height: 62, borderRadius: 6, fontSize: 10, centerSize: 14, rankSize: 9 },
+  md: { width: 56, height: 80, borderRadius: 8, fontSize: 13, centerSize: 18, rankSize: 11 },
+  lg: { width: 70, height: 100, borderRadius: 10, fontSize: 16, centerSize: 22, rankSize: 14 },
 };
 
-export const Card = ({ card, selected, playable, disabled, onPress, size = 'md' }) => {
-  if (!card) return null;
+export default function Card({
+  card,
+  isBack = false,
+  selected = false,
+  disabled = false,
+  playable = false,
+  onClick,
+  size = 'md',
+}) {
+  const dims = CARD_SIZES[size] || CARD_SIZES.md;
 
-  const symbol = SUIT_SYMBOLS[card.suit] || '♠';
-  const color = SUIT_COLORS[card.suit] || '#0F172A';
+  // ── Card Back ──────────────────────────────────────────
+  if (isBack || !card) {
+    return (
+      <View style={[styles.cardBack, { width: dims.width, height: dims.height, borderRadius: dims.borderRadius }]}>
+        <View style={styles.cardBackInner}>
+          <Text style={[styles.cardBackText, { fontSize: dims.rankSize }]}>BP</Text>
+        </View>
+      </View>
+    );
+  }
 
-  return (
+  const suitInfo = SUIT_NAMES[card.suit];
+  const isRed = suitInfo.isRed;
+  const textColor = disabled ? '#94A3B8' : isRed ? '#DC2626' : '#0F172A';
+  const cardBg = disabled ? '#CBD5E1' : '#FFFFFF';
+
+  const borderStyle = selected
+    ? { borderColor: '#6366F1', borderWidth: 2 }
+    : playable
+    ? { borderColor: '#10B981', borderWidth: 1.5 }
+    : disabled
+    ? { borderColor: '#94A3B8', borderWidth: 1 }
+    : { borderColor: '#CBD5E1', borderWidth: 1 };
+
+  const shadowStyle = selected
+    ? { shadowColor: '#6366F1', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.6, shadowRadius: 8, elevation: 10 }
+    : playable
+    ? { shadowColor: '#10B981', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 4, elevation: 6 }
+    : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3, elevation: 3 };
+
+  const liftStyle = selected ? { transform: [{ translateY: -14 }] } : {};
+
+  const cardContent = (
     <View
       style={[
-        styles.cardContainer,
-        selected && styles.selectedCard,
-        disabled && styles.disabledCard,
-        playable && styles.playableCard,
+        styles.cardFace,
+        borderStyle,
+        shadowStyle,
+        liftStyle,
+        {
+          width: dims.width,
+          height: dims.height,
+          borderRadius: dims.borderRadius,
+          backgroundColor: cardBg,
+          opacity: disabled ? 0.65 : 1,
+        },
+        card.isBegumHukum && !selected && styles.begumHukumRing,
       ]}
-      onTouchEnd={disabled ? null : onPress}
     >
-      <View style={styles.cornerTop}>
-        <Text style={[styles.rankText, { color }]}>{card.rank}</Text>
-        <Text style={[styles.suitText, { color }]}>{symbol}</Text>
-      </View>
-
-      <View style={styles.centerSuit}>
-        <Text style={[styles.largeSuitText, { color }]}>{symbol}</Text>
-      </View>
-
-      <View style={styles.cornerBottom}>
-        <Text style={[styles.rankText, { color }]}>{card.rank}</Text>
-        <Text style={[styles.suitText, { color }]}>{symbol}</Text>
-      </View>
-
-      {card.isBegumHukum && (
-        <View style={styles.begumBadge}>
-          <Text style={styles.begumBadgeText}>Q♠</Text>
+      {/* Selected checkmark */}
+      {selected && (
+        <View style={styles.selectedBadge}>
+          <Text style={styles.selectedBadgeText}>✓</Text>
         </View>
       )}
+
+      {/* Begum Hukum crown badge */}
+      {!selected && card.isBegumHukum && (
+        <View style={styles.crownBadge}>
+          <Text style={{ fontSize: 8 }}>👑</Text>
+        </View>
+      )}
+
+      {/* Paan heart badge */}
+      {!selected && card.isPaan && (
+        <View style={styles.heartBadge}>
+          <Text style={{ fontSize: 7, color: '#FFF' }}>♥</Text>
+        </View>
+      )}
+
+      {/* Top-left: rank + symbol */}
+      <View style={styles.cardCorner}>
+        <Text style={[styles.rankText, { color: textColor, fontSize: dims.rankSize }]}>{card.rank}</Text>
+        <Text style={[styles.suitText, { color: textColor, fontSize: dims.rankSize }]}>{suitInfo.symbol}</Text>
+      </View>
+
+      {/* Center: big suit symbol + hindi name */}
+      <View style={styles.cardCenter}>
+        <Text style={[styles.centerSymbol, { color: textColor, fontSize: dims.centerSize }]}>
+          {suitInfo.symbol}
+        </Text>
+        <Text style={[styles.centerHindi, { color: textColor, fontSize: dims.rankSize - 3 }]}>
+          {suitInfo.hi}
+        </Text>
+      </View>
+
+      {/* Bottom-right: inverted rank + symbol */}
+      <View style={[styles.cardCorner, styles.cardCornerBottom]}>
+        <Text style={[styles.rankText, { color: textColor, fontSize: dims.rankSize, transform: [{ rotate: '180deg' }] }]}>{card.rank}</Text>
+        <Text style={[styles.suitText, { color: textColor, fontSize: dims.rankSize, transform: [{ rotate: '180deg' }] }]}>{suitInfo.symbol}</Text>
+      </View>
     </View>
   );
-};
+
+  if (onClick && !disabled) {
+    return (
+      <TouchableOpacity activeOpacity={0.8} onPress={onClick}>
+        {cardContent}
+      </TouchableOpacity>
+    );
+  }
+
+  return cardContent;
+}
 
 const styles = StyleSheet.create({
-  cardContainer: {
-    width: 60,
-    height: 86,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: '#CBD5E1',
-    padding: 3,
-    justifyContent: 'space-between',
-    elevation: 4,
+  cardBack: {
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  selectedCard: {
-    borderColor: '#6366F1',
-    borderWidth: 2.5,
-    transform: [{ translateY: -12 }],
+  cardBackInner: {
+    width: '88%',
+    height: '88%',
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.3)',
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(99,102,241,0.08)',
   },
-  playableCard: {
-    borderColor: '#10B981',
+  cardBackText: {
+    color: 'rgba(99,102,241,0.7)',
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  cardFace: {
+    position: 'relative',
+    justifyContent: 'space-between',
+    padding: 4,
+  },
+  begumHukumRing: {
+    borderColor: '#F59E0B',
+    borderWidth: 1.5,
+  },
+  selectedBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#6366F1',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 2,
+    borderColor: '#FFF',
+    zIndex: 10,
+    shadowColor: '#6366F1',
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 8,
   },
-  disabledCard: {
-    opacity: 0.5,
-    backgroundColor: '#F1F5F9',
+  selectedBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '900',
   },
-  cornerTop: {
+  crownBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#F59E0B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+    zIndex: 10,
+  },
+  heartBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#DC2626',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  cardCorner: {
     alignItems: 'flex-start',
   },
-  cornerBottom: {
+  cardCornerBottom: {
     alignItems: 'flex-end',
-    transform: [{ rotate: '180deg' }],
+    alignSelf: 'flex-end',
   },
   rankText: {
-    fontSize: 12,
     fontWeight: '900',
-    lineHeight: 12,
+    lineHeight: 14,
   },
   suitText: {
-    fontSize: 10,
-    lineHeight: 10,
+    lineHeight: 14,
+    marginTop: 1,
   },
-  centerSuit: {
-    alignItems: 'center',
+  cardCenter: {
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  largeSuitText: {
-    fontSize: 22,
-    fontWeight: 'bold',
+  centerSymbol: {
+    fontWeight: '700',
+    lineHeight: 28,
   },
-  begumBadge: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: '#4338CA',
-    borderRadius: 4,
-    paddingHorizontal: 3,
-    paddingVertical: 1,
-  },
-  begumBadgeText: {
-    color: '#FFF',
-    fontSize: 8,
-    fontWeight: 'bold',
+  centerHindi: {
+    color: '#94A3B8',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginTop: 1,
   },
 });
