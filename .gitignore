@@ -6,7 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
-*.apk
 mobile/android/
-public/*.apk
+!public/BegiPakad.apk
 
