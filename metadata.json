@@ -1,0 +1,6 @@
+{
+  "name": "Begi Pakad",
+  "description": "Cross-platform multiplayer card game Begi Pakad with real-time Socket.IO multiplayer, private rooms, matchmaking, smart AI bots, and authentic Indian rules.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
