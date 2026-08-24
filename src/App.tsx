@@ -27,6 +27,7 @@ import { HowToPlayModal } from './components/HowToPlayModal.tsx';
 import { ProfileModal } from './components/ProfileModal.tsx';
 import { SettingsModal } from './components/SettingsModal.tsx';
 import { GameOverModal } from './components/GameOverModal.tsx';
+import { RoundSummaryModal } from './components/RoundSummaryModal.tsx';
 
 type AppView =
   | 'menu'
@@ -308,6 +309,15 @@ export default function App() {
             isHost={isHost}
             onOpenRules={() => setShowHowToPlay(true)}
             tableTheme={tableTheme}
+          />
+
+          <RoundSummaryModal
+            isOpen={Boolean(onlineGameState.phase === 'HAND_COMPLETE')}
+            handResult={onlineGameState.handHistory[onlineGameState.handHistory.length - 1] || null}
+            players={onlineGameState.players}
+            onContinue={() => {
+              // Online game automatically transitions when host/players complete
+            }}
           />
 
           <GameOverModal

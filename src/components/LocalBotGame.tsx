@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BotAI } from '../game/Bot.ts';
 import { GameEngine } from '../game/GameEngine.ts';
-import { ClientGameState, Player, TeamId } from '../game/types.ts';
+import { ClientGameState, Player, TeamId, HandScoreResult } from '../game/types.ts';
 import { GameOverModal } from './GameOverModal.tsx';
 import { GameTable } from './GameTable.tsx';
 import { HowToPlayModal } from './HowToPlayModal.tsx';
+import { RoundSummaryModal } from './RoundSummaryModal.tsx';
 import { sounds } from '../services/audio.ts';
 import { recordGameResult } from '../services/storage.ts';
 
@@ -29,6 +30,7 @@ export const LocalBotGame: React.FC<LocalBotGameProps> = ({
   const [clientState, setClientState] = useState<ClientGameState | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
+  const [roundSummaryResult, setRoundSummaryResult] = useState<HandScoreResult | null>(null);
   const botTurnTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize Game with Human in Seat 0 (Team 1) and 3 Bots
@@ -36,6 +38,7 @@ export const LocalBotGame: React.FC<LocalBotGameProps> = ({
     if (botTurnTimerRef.current) {
       clearTimeout(botTurnTimerRef.current);
     }
+    setRoundSummaryResult(null);
 
     const players: Player[] = [
       {
@@ -195,10 +198,22 @@ export const LocalBotGame: React.FC<LocalBotGameProps> = ({
       if (!engineRef.current) return;
       const finalRes = engineRef.current.finalizeCompletedTrick();
       updateClientView();
-      if (!finalRes.isGameOver) {
+      if (finalRes.handResult && !finalRes.isGameOver) {
+        setRoundSummaryResult(finalRes.handResult);
+      } else if (!finalRes.isGameOver) {
         checkAndTriggerBotTurn();
       }
     }, 1400);
+  };
+
+  const handleNextRoundFromSummary = () => {
+    setRoundSummaryResult(null);
+    const engine = engineRef.current;
+    if (!engine) return;
+    const state = engine.getState();
+    engine.startNewHand(state.handNumber + 1, state.handNumber % 4);
+    updateClientView();
+    handleBotPassing();
   };
 
   // Check if current turn is a bot and execute with natural delay
@@ -208,13 +223,6 @@ export const LocalBotGame: React.FC<LocalBotGameProps> = ({
 
     const state = engine.getState();
     if (state.phase === 'HAND_COMPLETE') {
-      // Start next hand after short pause
-      botTurnTimerRef.current = setTimeout(() => {
-        if (!engineRef.current) return;
-        engineRef.current.startNewHand(state.handNumber + 1, state.handNumber % 4);
-        updateClientView();
-        handleBotPassing();
-      }, 1800);
       return;
     }
 
@@ -280,6 +288,13 @@ export const LocalBotGame: React.FC<LocalBotGameProps> = ({
       />
 
       <HowToPlayModal isOpen={showRules} onClose={() => setShowRules(false)} />
+
+      <RoundSummaryModal
+        isOpen={Boolean(roundSummaryResult)}
+        handResult={roundSummaryResult}
+        players={clientState.players}
+        onContinue={handleNextRoundFromSummary}
+      />
 
       <GameOverModal
         isOpen={isGameOver}
