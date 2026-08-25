@@ -276,7 +276,7 @@ export const LocalBotGame: React.FC<LocalBotGameProps> = ({
   }
 
   return (
-    <div className="w-full min-h-screen bg-slate-950 flex flex-col items-center">
+    <div className="w-full h-screen h-[100dvh] bg-slate-950 flex flex-col items-center overflow-hidden">
       <GameTable
         gameState={clientState}
         onPlayCard={handleHumanPlayCard}

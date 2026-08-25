@@ -76,7 +76,7 @@ export const CardHand: React.FC<CardHandProps> = ({
       </div>
 
       {/* Cards container with responsive touch scrolling & clear bounds */}
-      <div className="w-full max-w-full sm:max-w-4xl md:max-w-5xl overflow-x-auto overflow-y-visible touch-scroll no-scrollbar pt-8 xs:pt-10 sm:pt-12 pb-2 xs:pb-3 px-2 xs:px-4 sm:px-8 flex justify-start sm:justify-center">
+      <div className="w-full max-w-full sm:max-w-4xl md:max-w-5xl overflow-x-auto overflow-y-visible touch-scroll no-scrollbar pt-3 xs:pt-4 sm:pt-6 pb-1 xs:pb-2 px-1 xs:px-2 sm:px-6 flex justify-start sm:justify-center">
         <div className="min-w-fit mx-auto flex items-end -space-x-3.5 xs:-space-x-4 sm:-space-x-5 md:-space-x-6 px-4 xs:px-6 sm:px-10">
           {cards.map((card, index) => {
             const isSelected = selectedSet.has(card.id);
