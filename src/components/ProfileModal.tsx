@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, User, Trophy, Zap, Shield, Save } from 'lucide-react';
-import { UserProfile } from '../game/types.ts';
-import { saveUserProfile } from '../services/storage.ts';
+import { UserProfile } from '../game/types';
+import { saveUserProfile } from '../services/storage';
 
 export interface ProfileModalProps {
   isOpen: boolean;

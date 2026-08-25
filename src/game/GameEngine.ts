@@ -1,13 +1,13 @@
-import { createDeck, dealCards, shuffleDeck, sortCards } from './cards.ts';
-import { getAutoPassSelection, getPassingRecipientSeat, validatePassSelection } from './passing.ts';
-import { getLegalCardsToPlay, isCardPlayLegal } from './rules.ts';
+import { createDeck, dealCards, shuffleDeck, sortCards } from './cards';
+import { getAutoPassSelection, getPassingRecipientSeat, validatePassSelection } from './passing';
+import { getLegalCardsToPlay, isCardPlayLegal } from './rules';
 import {
   calculateTrickPoints,
   checkGameLoss,
   checkZeroSerBonus,
   getTeamForSeat,
-} from './scoring.ts';
-import { determineTrickWinner } from './trick.ts';
+} from './scoring';
+import { determineTrickWinner } from './trick';
 import {
   Card,
   ClientGameState,
@@ -16,7 +16,7 @@ import {
   PlayedCard,
   Player,
   Trick,
-} from './types.ts';
+} from './types';
 
 export class GameEngine {
   private state: FullGameState;

@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BotAI } from '../game/Bot.ts';
-import { GameEngine } from '../game/GameEngine.ts';
-import { ClientGameState, Player, TeamId, HandScoreResult } from '../game/types.ts';
-import { GameOverModal } from './GameOverModal.tsx';
-import { GameTable } from './GameTable.tsx';
-import { HowToPlayModal } from './HowToPlayModal.tsx';
-import { RoundSummaryModal } from './RoundSummaryModal.tsx';
-import { sounds } from '../services/audio.ts';
-import { recordGameResult } from '../services/storage.ts';
+import { BotAI } from '../game/Bot';
+import { GameEngine } from '../game/GameEngine';
+import { ClientGameState, Player, TeamId, HandScoreResult } from '../game/types';
+import { GameOverModal } from './GameOverModal';
+import { GameTable } from './GameTable';
+import { HowToPlayModal } from './HowToPlayModal';
+import { RoundSummaryModal } from './RoundSummaryModal';
+import { sounds } from '../services/audio';
+import { recordGameResult } from '../services/storage';
 
 export interface LocalBotGameProps {
   playerName: string;

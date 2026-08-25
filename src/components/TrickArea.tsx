@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { SUIT_NAMES } from '../game/cards.ts';
-import { Player, Trick } from '../game/types.ts';
-import { Card } from './Card.tsx';
+import { SUIT_NAMES } from '../game/cards';
+import { Player, Trick } from '../game/types';
+import { Card } from './Card';
 import { motion, AnimatePresence } from 'motion/react';
 import { Crown, Sparkles } from 'lucide-react';
 

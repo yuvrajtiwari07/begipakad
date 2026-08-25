@@ -1,4 +1,4 @@
-import { Card, Trick } from './types.ts';
+import { Card, Trick } from './types';
 
 /**
  * Validates which cards a player can legally play from their current hand.

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Card as CardType } from '../game/types.ts';
-import { SUIT_NAMES } from '../game/cards.ts';
+import { Card as CardType } from '../game/types';
+import { SUIT_NAMES } from '../game/cards';
 import { Crown, Heart, Check } from 'lucide-react';
 
 export interface CardProps {

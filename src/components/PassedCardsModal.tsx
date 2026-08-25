@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Card as CardType, Player } from '../game/types.ts';
-import { Card } from './Card.tsx';
+import { Card as CardType, Player } from '../game/types';
+import { Card } from './Card';
 import { Sparkles, X, Clock, ArrowDownLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 

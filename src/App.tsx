@@ -17,19 +17,19 @@ import {
   Smartphone,
   Download,
 } from 'lucide-react';
-import { ClientGameState, RoomInfo, UserProfile } from './game/types.ts';
-import { getSocket } from './networking/socket.ts';
-import { getUserProfile, recordGameResult } from './services/storage.ts';
-import { sounds } from './services/audio.ts';
-import { LocalBotGame } from './components/LocalBotGame.tsx';
-import { GameTable } from './components/GameTable.tsx';
-import { RoomLobby } from './components/RoomLobby.tsx';
-import { MatchmakingModal } from './components/MatchmakingModal.tsx';
-import { HowToPlayModal } from './components/HowToPlayModal.tsx';
-import { ProfileModal } from './components/ProfileModal.tsx';
-import { SettingsModal } from './components/SettingsModal.tsx';
-import { GameOverModal } from './components/GameOverModal.tsx';
-import { RoundSummaryModal } from './components/RoundSummaryModal.tsx';
+import { ClientGameState, RoomInfo, UserProfile } from './game/types';
+import { getSocket } from './networking/socket';
+import { getUserProfile, recordGameResult } from './services/storage';
+import { sounds } from './services/audio';
+import { LocalBotGame } from './components/LocalBotGame';
+import { GameTable } from './components/GameTable';
+import { RoomLobby } from './components/RoomLobby';
+import { MatchmakingModal } from './components/MatchmakingModal';
+import { HowToPlayModal } from './components/HowToPlayModal';
+import { ProfileModal } from './components/ProfileModal';
+import { SettingsModal } from './components/SettingsModal';
+import { GameOverModal } from './components/GameOverModal';
+import { RoundSummaryModal } from './components/RoundSummaryModal';
 
 type AppView =
   | 'menu'

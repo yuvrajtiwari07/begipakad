@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Settings, Volume2, VolumeX, Smartphone, Palette } from 'lucide-react';
-import { sounds } from '../services/audio.ts';
-import { haptics } from '../services/haptics.ts';
+import { sounds } from '../services/audio';
+import { haptics } from '../services/haptics';
 
 export interface SettingsModalProps {
   isOpen: boolean;

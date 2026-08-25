@@ -1,4 +1,4 @@
-import { UserProfile } from '../game/types.ts';
+import { UserProfile } from '../game/types';
 
 const USER_STORAGE_KEY = 'begi_pakad_user_profile';
 

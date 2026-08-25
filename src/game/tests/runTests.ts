@@ -1,10 +1,10 @@
-import { createCard, createDeck, dealCards, shuffleDeck } from '../cards.ts';
-import { GameEngine } from '../GameEngine.ts';
-import { validatePassSelection } from '../passing.ts';
-import { getLegalCardsToPlay } from '../rules.ts';
-import { calculateTrickPoints, checkGameLoss, checkZeroSerBonus } from '../scoring.ts';
-import { determineTrickWinner } from '../trick.ts';
-import { Card, PlayedCard, Player, Trick } from '../types.ts';
+import { createCard, createDeck, dealCards, shuffleDeck } from '../cards';
+import { GameEngine } from '../GameEngine';
+import { validatePassSelection } from '../passing';
+import { getLegalCardsToPlay } from '../rules';
+import { calculateTrickPoints, checkGameLoss, checkZeroSerBonus } from '../scoring';
+import { determineTrickWinner } from '../trick';
+import { Card, PlayedCard, Player, Trick } from '../types';
 
 function assert(condition: boolean, testName: string) {
   if (!condition) {

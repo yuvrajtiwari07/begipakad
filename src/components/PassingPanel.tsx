@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Card as CardType, Player } from '../game/types.ts';
-import { getScoreZone } from '../game/scoring.ts';
+import { Card as CardType, Player } from '../game/types';
+import { getScoreZone } from '../game/scoring';
 import { Clock, Send, Sparkles, AlertTriangle } from 'lucide-react';
-import { sounds } from '../services/audio.ts';
+import { sounds } from '../services/audio';
 
 export interface PassingPanelProps {
   selectedCardIds: string[];

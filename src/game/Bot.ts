@@ -1,7 +1,7 @@
-import { getAutoPassSelection } from './passing.ts';
-import { getLegalCardsToPlay } from './rules.ts';
-import { getScoreZone } from './scoring.ts';
-import { Card, Trick } from './types.ts';
+import { getAutoPassSelection } from './passing';
+import { getLegalCardsToPlay } from './rules';
+import { getScoreZone } from './scoring';
+import { Card, Trick } from './types';
 
 export class BotAI {
   /**

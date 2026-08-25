@@ -1,4 +1,4 @@
-import { Card } from './types.ts';
+import { Card } from './types';
 
 export const PASSING_DIRECTION_MAP: Record<number, number> = {
   0: 1, // P1 -> P2

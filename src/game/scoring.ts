@@ -1,4 +1,4 @@
-import { Card, TeamId } from './types.ts';
+import { Card, TeamId } from './types';
 
 export interface ScoreZoneInfo {
   zone: 'normal' | 'hukum_protected' | 'paan_passing_protected' | 'lost';

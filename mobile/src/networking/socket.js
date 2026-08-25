@@ -1,11 +1,11 @@
-import { io, Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
 
-let socket: Socket | null = null;
+let socket = null;
 
 // Replace with your local server IP (e.g., http://192.168.1.5:3000) or production server URL
 const DEFAULT_SERVER_URL = 'http://10.0.2.2:3000'; 
 
-export function getSocket(customUrl?: string): Socket {
+export function getSocket(customUrl) {
   if (!socket) {
     const targetUrl = customUrl || DEFAULT_SERVER_URL;
     socket = io(targetUrl, {
@@ -19,7 +19,7 @@ export function getSocket(customUrl?: string): Socket {
   return socket;
 }
 
-export function disconnectSocket(): void {
+export function disconnectSocket() {
   if (socket) {
     socket.disconnect();
     socket = null;

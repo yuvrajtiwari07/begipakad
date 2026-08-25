@@ -1,4 +1,4 @@
-import { Card, PlayedCard, Suit } from './types.ts';
+import { Card, PlayedCard, Suit } from './types';
 
 export function determineTrickWinner(cards: PlayedCard[], leadSuit: Suit): { winnerSeatIndex: number; winningCard: Card } {
   if (cards.length === 0) {

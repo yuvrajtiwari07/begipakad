@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Player, HandScoreResult } from '../game/types.ts';
+import { Player, HandScoreResult } from '../game/types';
 import { Award, Flame, ShieldAlert, ArrowRight, Trophy } from 'lucide-react';
-import { sounds } from '../services/audio.ts';
+import { sounds } from '../services/audio';
 
 export interface RoundSummaryModalProps {
   isOpen: boolean;

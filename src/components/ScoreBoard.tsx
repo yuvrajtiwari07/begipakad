@@ -1,6 +1,6 @@
 import React from 'react';
-import { Player } from '../game/types.ts';
-import { getScoreZone } from '../game/scoring.ts';
+import { Player } from '../game/types';
+import { getScoreZone } from '../game/scoring';
 import { Award } from 'lucide-react';
 
 export interface ScoreBoardProps {

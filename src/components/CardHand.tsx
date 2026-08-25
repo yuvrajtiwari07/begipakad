@@ -1,8 +1,8 @@
 import React from 'react';
-import { Card as CardType } from '../game/types.ts';
-import { Card } from './Card.tsx';
-import { sounds } from '../services/audio.ts';
-import { haptics } from '../services/haptics.ts';
+import { Card as CardType } from '../game/types';
+import { Card } from './Card';
+import { sounds } from '../services/audio';
+import { haptics } from '../services/haptics';
 import { Clock } from 'lucide-react';
 
 export interface CardHandProps {

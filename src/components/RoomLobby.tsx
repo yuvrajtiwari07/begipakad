@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { RoomInfo } from '../game/types.ts';
+import { RoomInfo } from '../game/types';
 import { Copy, Check, Users, Bot, Play, ArrowLeft, Plus, Trash2, Zap } from 'lucide-react';
-import { sounds } from '../services/audio.ts';
+import { sounds } from '../services/audio';
 
 export interface RoomLobbyProps {
   room: RoomInfo;

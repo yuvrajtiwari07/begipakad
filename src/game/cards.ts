@@ -1,4 +1,4 @@
-import { Card, Rank, Suit } from './types.ts';
+import { Card, Rank, Suit } from './types';
 
 export const SUITS: Suit[] = ['HUKUM', 'PAAN', 'EENT', 'CHIDI'];
 

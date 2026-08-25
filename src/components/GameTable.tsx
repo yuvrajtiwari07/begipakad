@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Card as CardType, ClientGameState, Player, TeamId } from '../game/types.ts';
-import { CardHand } from './CardHand.tsx';
-import { PlayerSeat } from './PlayerSeat.tsx';
-import { TrickArea } from './TrickArea.tsx';
-import { PassingPanel } from './PassingPanel.tsx';
-import { ScoreBoard } from './ScoreBoard.tsx';
-import { PassedCardsModal } from './PassedCardsModal.tsx';
+import { Card as CardType, ClientGameState, Player, TeamId } from '../game/types';
+import { CardHand } from './CardHand';
+import { PlayerSeat } from './PlayerSeat';
+import { TrickArea } from './TrickArea';
+import { PassingPanel } from './PassingPanel';
+import { ScoreBoard } from './ScoreBoard';
+import { PassedCardsModal } from './PassedCardsModal';
 import {
   Volume2,
   VolumeX,
@@ -16,9 +16,9 @@ import {
   Award,
   MessageSquare,
 } from 'lucide-react';
-import { sounds } from '../services/audio.ts';
-import { SUIT_NAMES } from '../game/cards.ts';
-import { getSocket } from '../networking/socket.ts';
+import { sounds } from '../services/audio';
+import { SUIT_NAMES } from '../game/cards';
+import { getSocket } from '../networking/socket';
 
 export interface GameTableProps {
   gameState: ClientGameState;

@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { Trophy, Skull, RotateCcw, Home, Award } from 'lucide-react';
-import { Player, TeamId } from '../game/types.ts';
-import { sounds } from '../services/audio.ts';
+import { Player, TeamId } from '../game/types';
+import { sounds } from '../services/audio';
 
 export interface GameOverModalProps {
   isOpen: boolean;
