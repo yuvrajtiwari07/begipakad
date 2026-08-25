@@ -16,6 +16,8 @@ import {
   Sparkles,
   Smartphone,
   Download,
+  Maximize,
+  Minimize,
 } from 'lucide-react';
 import { ClientGameState, RoomInfo, UserProfile } from './game/types';
 import { getSocket } from './networking/socket';
@@ -154,9 +156,16 @@ export default function App() {
     };
   }, [profile.id, profile.name, profile.avatarSeed]);
 
+  const triggerFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    }
+  };
+
   // Actions
   const handlePlayBots = () => {
     sounds.playCardSelect();
+    triggerFullscreen();
     const socket = getSocket();
     socket.emit('room:leave');
     socket.emit('matchmaking:leave');
@@ -168,6 +177,7 @@ export default function App() {
 
   const handleCreateRoom = () => {
     sounds.playCardSelect();
+    triggerFullscreen();
     setOnlineGameState(null);
     setCurrentRoom(null);
     setIsMatchmaking(false);
@@ -179,6 +189,7 @@ export default function App() {
     e.preventDefault();
     if (!joinRoomInput.trim()) return;
     sounds.playCardSelect();
+    triggerFullscreen();
     setOnlineGameState(null);
     setCurrentRoom(null);
     setIsMatchmaking(false);
@@ -190,6 +201,7 @@ export default function App() {
 
   const handleStartRandomMatch = () => {
     sounds.playCardSelect();
+    triggerFullscreen();
     setOnlineGameState(null);
     setCurrentRoom(null);
     const socket = getSocket();
@@ -223,6 +235,7 @@ export default function App() {
   };
 
   const handleStartRoomGame = () => {
+    triggerFullscreen();
     const socket = getSocket();
     socket.emit('room:start');
   };

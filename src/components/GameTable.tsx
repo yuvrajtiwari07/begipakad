@@ -15,6 +15,8 @@ import {
   Sparkles,
   Award,
   MessageSquare,
+  Maximize,
+  Minimize,
 } from 'lucide-react';
 import { sounds } from '../services/audio';
 import { SUIT_NAMES } from '../game/cards';
@@ -57,6 +59,21 @@ export const GameTable: React.FC<GameTableProps> = ({
   const [turnSecondsRemaining, setTurnSecondsRemaining] = useState<number>(20);
   const [showQuickMsgMenu, setShowQuickMsgMenu] = useState(false);
   const [activeToasts, setActiveToasts] = useState<Record<number, string | null>>({});
+  const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
+
+  useEffect(() => {
+    const handleFs = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', handleFs);
+    return () => document.removeEventListener('fullscreenchange', handleFs);
+  }, []);
+
+  const handleToggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  };
 
   const quickMessages = ['Randi', 'Lawda', 'Madarchod', 'Mauga', 'chutiya'];
 
@@ -355,6 +372,19 @@ export const GameTable: React.FC<GameTableProps> = ({
               <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
             ) : (
               <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleToggleFullscreen}
+            className="p-1.5 xs:p-2 rounded-lg sm:rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+          >
+            {isFullscreen ? (
+              <Minimize className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-400" />
+            ) : (
+              <Maximize className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-400" />
             )}
           </button>
 

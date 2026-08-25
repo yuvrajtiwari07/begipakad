@@ -45,7 +45,16 @@ export function getLegalCardsToPlay(hand: Card[], currentTrick: Trick): Card[] {
   }
 
   // 3. Player does NOT have lead suit cards
-  // Priority 1: If they have Q♠, they MUST play Q♠
+  // First trick rule: Queen of Spades (Q♠) cannot be played by any player during Trick 1
+  if (currentTrick.trickNumber === 1) {
+    const cardsWithoutBegum = hand.filter((c) => !c.isBegumHukum);
+    if (cardsWithoutBegum.length > 0) {
+      return cardsWithoutBegum;
+    }
+    return hand;
+  }
+
+  // Trick 2 onwards: Priority 1 - If they have Q♠, they MUST play Q♠
   if (begumHukumInHand) {
     return [begumHukumInHand];
   }

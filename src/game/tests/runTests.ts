@@ -164,6 +164,24 @@ function runAllTests() {
     'First round lead cannot be Hukum ♠ or Paan ♥ (only Club/Diamond allowed)',
   );
 
+  // Test 13: Trick 1 Q♠ Prohibition Rule (No player can play Q♠ during Trick 1 even if missing lead suit)
+  const trick1LeadEent: Trick = {
+    trickNumber: 1,
+    leadSuit: 'EENT',
+    leaderSeatIndex: 0,
+    cards: [{ playerId: 'p1', seatIndex: 0, card: createCard('EENT', '10') }],
+  };
+  const handTrick1NoEentWithQ: Card[] = [
+    createCard('HUKUM', 'Q'), // Begum Hukum
+    createCard('CHIDI', '7'),
+    createCard('PAAN', '9'),
+  ];
+  const legalPlaysTrick1 = getLegalCardsToPlay(handTrick1NoEentWithQ, trick1LeadEent);
+  assert(
+    !legalPlaysTrick1.some((c) => c.isBegumHukum) && legalPlaysTrick1.length === 2,
+    'Queen of Spades (Q♠) cannot be played during Trick 1',
+  );
+
   console.log('🎉 ALL BEGI PAKAD UNIT TESTS PASSED SUCCESSFULLY! 🎉');
 }
 
