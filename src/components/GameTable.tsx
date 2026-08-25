@@ -68,6 +68,14 @@ export const GameTable: React.FC<GameTableProps> = ({
     gameState.currentTurnSeatIndex === mySeat &&
     !isTrickCollecting;
 
+  const showPassedModal =
+    Boolean(gameState.lastReceivedPassedCards) &&
+    gameState.lastReceivedPassedCards?.handNumber !== dismissedPassHand;
+
+  const passedFromPlayer = gameState.lastReceivedPassedCards
+    ? gameState.players.find((p) => p.seatIndex === gameState.lastReceivedPassedCards?.fromSeatIndex)
+    : undefined;
+
   // Reset selected passed cards whenever hand changes or passing phase starts
   useEffect(() => {
     setSelectedPassCardIds([]);
@@ -188,14 +196,6 @@ export const GameTable: React.FC<GameTableProps> = ({
     .filter((c) => validSelectedPassIds.includes(c.id))
     .some((c) => c.isPaan);
 
-  // Passed cards received modal check
-  const showPassedModal =
-    gameState.lastReceivedPassedCards &&
-    gameState.lastReceivedPassedCards.handNumber !== dismissedPassHand;
-
-  const passedFromPlayer = gameState.lastReceivedPassedCards
-    ? gameState.players.find((p) => p.seatIndex === gameState.lastReceivedPassedCards?.fromSeatIndex)
-    : undefined;
 
   // Quick message click handler
   const handleQuickMsgClick = (msg: string) => {

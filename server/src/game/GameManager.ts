@@ -354,4 +354,15 @@ export class GameManager {
       text: messageText,
     });
   }
+
+  public clearCompletedSessionsForPlayer(playerId: string): void {
+    for (const [gameId, session] of this.activeGames.entries()) {
+      if (
+        session.engine.getState().phase === 'GAME_COMPLETE' &&
+        session.room.players.some((p) => p.id === playerId)
+      ) {
+        this.activeGames.delete(gameId);
+      }
+    }
+  }
 }

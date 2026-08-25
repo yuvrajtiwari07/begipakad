@@ -54,9 +54,26 @@ async function startServer() {
       }
     });
 
+    const cleanupPlayerState = (playerId: string) => {
+      matchmakingService.leaveQueue(playerId);
+      const existingRoom = roomManager.getRoomByPlayerId(playerId);
+      if (existingRoom && !existingRoom.isGameStarted) {
+        existingRoom.removePlayer(playerId);
+        socket.leave(existingRoom.roomId);
+        if (existingRoom.players.length === 0 || existingRoom.players.every((p) => p.isBot)) {
+          roomManager.removeRoom(existingRoom.roomId);
+        } else {
+          io.to(existingRoom.roomId).emit('room:updated', existingRoom.toInfo());
+        }
+      }
+      gameManager.clearCompletedSessionsForPlayer(playerId);
+    };
+
     // Create Private Room
     socket.on('room:create', () => {
       if (!currentUserId) return;
+      cleanupPlayerState(currentUserId);
+
       const hostPlayer: RoomPlayer = {
         id: currentUserId,
         name: currentUserName,
@@ -76,6 +93,8 @@ async function startServer() {
     // Join Room
     socket.on('room:join', (roomId: string) => {
       if (!currentUserId) return;
+      cleanupPlayerState(currentUserId);
+
       const cleanRoomId = roomId.trim().toUpperCase();
       const room = roomManager.getRoom(cleanRoomId);
 
@@ -117,16 +136,7 @@ async function startServer() {
     // Leave Room
     socket.on('room:leave', () => {
       if (!currentUserId) return;
-      const room = roomManager.getRoomByPlayerId(currentUserId);
-      if (room) {
-        room.removePlayer(currentUserId);
-        socket.leave(room.roomId);
-        if (room.players.length === 0) {
-          roomManager.removeRoom(room.roomId);
-        } else {
-          io.to(room.roomId).emit('room:updated', room.toInfo());
-        }
-      }
+      cleanupPlayerState(currentUserId);
     });
 
     // Add Bot to Room
@@ -162,6 +172,7 @@ async function startServer() {
     // Matchmaking Join
     socket.on('matchmaking:join', () => {
       if (!currentUserId) return;
+      cleanupPlayerState(currentUserId);
       const player: RoomPlayer = {
         id: currentUserId,
         name: currentUserName,

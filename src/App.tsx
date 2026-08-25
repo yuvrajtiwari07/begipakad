@@ -111,7 +111,7 @@ export default function App() {
 
     socket.on('game:stateUpdate', (state) => {
       setOnlineGameState(state);
-      setCurrentView((prev) => (prev === 'room_lobby' ? 'online_game' : prev));
+      setCurrentView((prev) => (prev === 'local_bots' ? prev : 'online_game'));
       if (state.phase === 'GAME_COMPLETE') {
         setIsGameOverModalOpen(true);
         const myTeam = (state.mySeatIndex % 2 === 0 ? 1 : 2);
@@ -157,11 +157,20 @@ export default function App() {
   // Actions
   const handlePlayBots = () => {
     sounds.playCardSelect();
+    const socket = getSocket();
+    socket.emit('room:leave');
+    socket.emit('matchmaking:leave');
+    setOnlineGameState(null);
+    setCurrentRoom(null);
+    setIsMatchmaking(false);
     setCurrentView('local_bots');
   };
 
   const handleCreateRoom = () => {
     sounds.playCardSelect();
+    setOnlineGameState(null);
+    setCurrentRoom(null);
+    setIsMatchmaking(false);
     const socket = getSocket();
     socket.emit('room:create');
   };
@@ -170,6 +179,9 @@ export default function App() {
     e.preventDefault();
     if (!joinRoomInput.trim()) return;
     sounds.playCardSelect();
+    setOnlineGameState(null);
+    setCurrentRoom(null);
+    setIsMatchmaking(false);
     const socket = getSocket();
     socket.emit('room:join', joinRoomInput.trim().toUpperCase());
     setShowJoinRoomModal(false);
@@ -178,6 +190,8 @@ export default function App() {
 
   const handleStartRandomMatch = () => {
     sounds.playCardSelect();
+    setOnlineGameState(null);
+    setCurrentRoom(null);
     const socket = getSocket();
     socket.emit('matchmaking:join');
     setIsMatchmaking(true);
@@ -193,6 +207,8 @@ export default function App() {
     const socket = getSocket();
     socket.emit('room:leave');
     setCurrentRoom(null);
+    setOnlineGameState(null);
+    setIsMatchmaking(false);
     setCurrentView('menu');
   };
 
@@ -248,17 +264,24 @@ export default function App() {
   const handleExitAndEndGame = () => {
     const socket = getSocket();
     socket.emit('game:exitAndEnd');
+    handleExitToMenu();
   };
 
   const handleHostEndGame = () => {
     const socket = getSocket();
     socket.emit('game:hostEndGame');
+    handleExitToMenu();
   };
 
   const handleExitToMenu = () => {
+    const socket = getSocket();
+    socket.emit('room:leave');
+    socket.emit('matchmaking:leave');
     setCurrentView('menu');
     setOnlineGameState(null);
     setCurrentRoom(null);
+    setIsMatchmaking(false);
+    setIsGameOverModalOpen(false);
   };
 
   const isHost = Boolean(currentRoom && currentRoom.hostPlayerId === profile.id);
