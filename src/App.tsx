@@ -32,6 +32,10 @@ import { ProfileModal } from './components/ProfileModal';
 import { SettingsModal } from './components/SettingsModal';
 import { GameOverModal } from './components/GameOverModal';
 import { RoundSummaryModal } from './components/RoundSummaryModal';
+import { usePWA } from './hooks/usePWA';
+import { PWAInstallModal } from './components/PWAInstallModal';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
+import { OfflineBadge, PWAUpdateToast } from './components/OfflineBadge';
 
 type AppView =
   | 'menu'
@@ -44,6 +48,23 @@ export default function App() {
   const [currentView, setCurrentView] = useState<AppView>('menu');
   const [botDifficulty, setBotDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [tableTheme, setTableTheme] = useState<string>('emerald');
+
+  // PWA State & Hook
+  const {
+    isInstallable,
+    isInstalled,
+    isIOS,
+    isAndroid,
+    isDesktop,
+    isOffline,
+    needRefresh,
+    hasNativePrompt,
+    triggerInstallPrompt,
+    updateServiceWorker,
+    dismissUpdate,
+  } = usePWA();
+  const [showPWAModal, setShowPWAModal] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   // Modals state
   const [showHowToPlay, setShowHowToPlay] = useState(false);
@@ -301,6 +322,25 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0F172A] text-slate-100 flex flex-col items-center justify-between font-sans selection:bg-indigo-600 selection:text-white">
+      {/* PWA Banner & Offline Status */}
+      {!bannerDismissed && (
+        <PWAInstallBanner
+          isInstallable={isInstallable}
+          isInstalled={isInstalled}
+          isIOS={isIOS}
+          isAndroid={isAndroid}
+          isDesktop={isDesktop}
+          onOpenModal={() => setShowPWAModal(true)}
+          onDismiss={() => setBannerDismissed(true)}
+        />
+      )}
+      <OfflineBadge isOffline={isOffline} />
+      <PWAUpdateToast
+        needRefresh={needRefresh}
+        onUpdate={updateServiceWorker}
+        onDismiss={dismissUpdate}
+      />
+
       {/* Toast Error Banner */}
       {errorMessage && (
         <div className="fixed top-4 z-50 max-w-md bg-rose-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-2xl border border-rose-400 animate-in fade-in slide-in-from-top">
@@ -356,9 +396,7 @@ export default function App() {
             isHost={onlineGameState.mySeatIndex === 0}
             hostName={onlineGameState.players.find(p => p.seatIndex === 0)?.name || 'Host'}
             onContinue={() => {
-              if (socketRef.current) {
-                socketRef.current.emit('game:nextRound');
-              }
+              getSocket().emit('game:nextRound');
             }}
           />
 
@@ -395,8 +433,18 @@ export default function App() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                onClick={() => setShowPWAModal(true)}
+                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md border border-indigo-400/40 transition cursor-pointer"
+                title="Install PWA App"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Install App</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setShowHowToPlay(true)}
-                className="p-2 rounded-xl bg-[#1E293B] border border-slate-700 hover:bg-slate-700 text-slate-300 hover:text-white transition shadow-sm"
+                className="p-2 rounded-xl bg-[#1E293B] border border-slate-700 hover:bg-slate-700 text-slate-300 hover:text-white transition shadow-sm cursor-pointer"
                 title="How To Play"
               >
                 <BookOpen className="w-4 h-4 text-indigo-400" />
@@ -405,7 +453,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setShowSettings(true)}
-                className="p-2 rounded-xl bg-[#1E293B] border border-slate-700 hover:bg-slate-700 text-slate-300 hover:text-white transition shadow-sm"
+                className="p-2 rounded-xl bg-[#1E293B] border border-slate-700 hover:bg-slate-700 text-slate-300 hover:text-white transition shadow-sm cursor-pointer"
                 title="Settings"
               >
                 <SettingsIcon className="w-4 h-4 text-slate-300" />
@@ -458,7 +506,7 @@ export default function App() {
                       key={d}
                       type="button"
                       onClick={() => setBotDifficulty(d)}
-                      className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase transition ${
+                      className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase transition cursor-pointer ${
                         botDifficulty === d
                           ? 'bg-indigo-600 text-white border border-indigo-400'
                           : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
@@ -522,19 +570,38 @@ export default function App() {
                 Queue
               </span>
             </button>
+
+            {/* Install PWA App Button */}
+            <button
+              type="button"
+              onClick={() => setShowPWAModal(true)}
+              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-700 hover:from-indigo-600 hover:to-purple-600 border border-indigo-400/30 text-white font-bold text-sm flex items-center justify-between transition shadow-lg shadow-indigo-900/40 group cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-white/20 text-white group-hover:scale-110 transition">
+                  <Sparkles className="w-4 h-4 text-amber-300 fill-amber-300" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span>INSTALL PWA APP</span>
+                  <span className="text-[10px] text-indigo-100 font-normal">PC, Laptop, Tablet, Android & iOS</span>
+                </div>
+              </div>
+              <Download className="w-4 h-4 text-indigo-100 group-hover:translate-y-0.5 transition" />
+            </button>
+
             {/* Download Android App APK */}
             <a
               href="/BegiPakad.apk"
               download="BegiPakad.apk"
-              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-400/30 text-white font-bold text-sm flex items-center justify-between transition shadow-lg shadow-emerald-900/40 group cursor-pointer no-underline"
+              className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-400/30 text-white font-bold text-xs flex items-center justify-between transition shadow-md group cursor-pointer no-underline"
             >
               <div className="flex items-center gap-2.5">
                 <div className="p-1.5 rounded-lg bg-white/20 text-white group-hover:scale-110 transition">
                   <Smartphone className="w-4 h-4" />
                 </div>
                 <div className="flex flex-col text-left">
-                  <span>DOWNLOAD MOBILE APP</span>
-                  <span className="text-[10px] text-emerald-100 font-normal">Android APK • Cross-Play</span>
+                  <span>DOWNLOAD ANDROID APK</span>
+                  <span className="text-[9px] text-emerald-100 font-normal">Native APK File • Android</span>
                 </div>
               </div>
               <Download className="w-4 h-4 text-emerald-100 group-hover:translate-y-0.5 transition" />
@@ -546,7 +613,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setShowHowToPlay(true)}
-              className="hover:text-indigo-300 transition flex items-center gap-1"
+              className="hover:text-indigo-300 transition flex items-center gap-1 cursor-pointer"
             >
               <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
               How To Play
@@ -555,7 +622,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setShowProfile(true)}
-              className="hover:text-indigo-300 transition flex items-center gap-1"
+              className="hover:text-indigo-300 transition flex items-center gap-1 cursor-pointer"
             >
               <User className="w-3.5 h-3.5 text-indigo-400" />
               Profile ({profile.name})
@@ -594,14 +661,14 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowJoinRoomModal(false)}
-                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition"
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!joinRoomInput.trim()}
-                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-md"
+                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer"
                 >
                   Join Room
                 </button>
@@ -639,6 +706,19 @@ export default function App() {
         onClose={() => setShowSettings(false)}
         tableTheme={tableTheme}
         onThemeChange={(th) => setTableTheme(th)}
+        onOpenPWAInstall={() => setShowPWAModal(true)}
+        isPWAInstalled={isInstalled}
+      />
+
+      {/* PWA Install Modal */}
+      <PWAInstallModal
+        isOpen={showPWAModal}
+        onClose={() => setShowPWAModal(false)}
+        isIOS={isIOS}
+        isAndroid={isAndroid}
+        isDesktop={isDesktop}
+        hasNativePrompt={hasNativePrompt}
+        onTriggerInstall={triggerInstallPrompt}
       />
     </div>
   );

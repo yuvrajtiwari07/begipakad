@@ -2,18 +2,34 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Begi Pakad — Cross-Platform Multiplayer Card Game</title>
-    <link rel="icon" type="image/png" href="/icon.png" />
+    
+    <!-- PWA & Mobile Web App Meta Tags -->
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Begi Pakad" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Begi Pakad" />
+    <meta name="msapplication-TileColor" content="#0f172a" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="shortcut icon" href="/favicon.ico" />
+
+    <!-- SEO & Social Sharing -->
     <meta name="description" content="Play Begi Pakad online with real-time multiplayer, smart AI bots, private rooms, and authentic Indian rules." />
     <meta property="og:title" content="Begi Pakad — Multiplayer Card Game" />
     <meta property="og:description" content="Play Begi Pakad online with real-time multiplayer, smart AI bots, private rooms, and authentic Indian rules." />
-    <meta property="og:image" content="/icon.png" />
+    <meta property="og:image" content="/pwa-512x512.png" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
   </head>
-  <body>
+  <body class="bg-[#0F172A] text-slate-100 select-none overflow-x-hidden antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
