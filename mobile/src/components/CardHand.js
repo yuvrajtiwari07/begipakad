@@ -20,7 +20,7 @@ export default function CardHand({ cards, selectedCardIds, legalPlayCardIds, isM
           const isDisabled = isMyTurn && !legalPlayCardIds.includes(card.id) && !isPassingPhase;
 
           return (
-            <View key={card.id} style={[styles.cardWrapper, { zIndex: isSelected ? 100 + idx : idx + 1 }]}>
+            <View key={card.id} style={[styles.cardWrapper, { zIndex: isSelected ? idx + 1 : 50 + idx }]}>
               <Card
                 card={card}
                 selected={isSelected && isPassingPhase}
