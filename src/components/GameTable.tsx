@@ -73,9 +73,12 @@ export const GameTable: React.FC<GameTableProps> = ({
     setSelectedPassCardIds([]);
   }, [gameState.handNumber, gameState.phase]);
 
-  // 20-second turn countdown timer for each player
+  // 20-second turn countdown timer for each player (starts AFTER 10s passed cards modal closes)
   useEffect(() => {
-    if (gameState.phase !== 'PLAYER_TURN' || isTrickCollecting) {
+    if (gameState.phase !== 'PLAYER_TURN' || isTrickCollecting || showPassedModal) {
+      if (showPassedModal) {
+        setTurnSecondsRemaining(20);
+      }
       return;
     }
 
@@ -108,6 +111,7 @@ export const GameTable: React.FC<GameTableProps> = ({
     gameState.legalPlayCardIds,
     onPlayCard,
     isTrickCollecting,
+    showPassedModal,
   ]);
 
   // Relative seat mapping:

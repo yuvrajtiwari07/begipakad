@@ -293,6 +293,22 @@ export class GameManager {
     }
   }
 
+  public handleNextRound(playerId: string): void {
+    const session = this.findSessionByPlayerId(playerId);
+    if (!session) return;
+
+    const { engine, room } = session;
+    const isHost = room.hostPlayerId === playerId || room.players.find((p) => p.id === playerId)?.seatIndex === 0;
+    if (!isHost) return;
+
+    const state = engine.getState();
+    if (state.phase === 'HAND_COMPLETE') {
+      engine.startNewHand(state.handNumber + 1, state.handNumber % 4);
+      this.broadcastGameUpdate(engine, room);
+      this.handleBotPassing(engine, room);
+    }
+  }
+
   public handleExitAndEndGame(playerId: string): void {
     const session = this.findSessionByPlayerId(playerId);
     if (!session) return;

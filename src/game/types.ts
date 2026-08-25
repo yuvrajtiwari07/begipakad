@@ -201,6 +201,7 @@ export interface ClientToServerEvents {
   'game:exitAndEnd': () => void;
   'game:hostEndGame': () => void;
   'game:sendQuickMessage': (messageText: string) => void;
+  'game:nextRound': () => void;
   'game:reconnect': (payload: { gameId: string; playerId: string }) => void;
 }
 

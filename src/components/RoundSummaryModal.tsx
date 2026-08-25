@@ -8,6 +8,8 @@ export interface RoundSummaryModalProps {
   handResult: HandScoreResult | null;
   players: Player[];
   onContinue: () => void;
+  isHost?: boolean;
+  hostName?: string;
 }
 
 export const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
@@ -15,6 +17,8 @@ export const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
   handResult,
   players,
   onContinue,
+  isHost = true,
+  hostName = 'Host',
 }) => {
   const [activeTab, setActiveTab] = useState<'round' | 'total' | 'ser'>('round');
 
@@ -236,16 +240,23 @@ export const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
           )}
         </div>
 
-        {/* Footer Action Button */}
+        {/* Footer Action Button / Host Wait Banner */}
         <div className="pt-2 border-t border-slate-700/80">
-          <button
-            type="button"
-            onClick={onContinue}
-            className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition active:scale-98 cursor-pointer"
-          >
-            <span>NEXT ROUND</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          {isHost ? (
+            <button
+              type="button"
+              onClick={onContinue}
+              className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition active:scale-98 cursor-pointer"
+            >
+              <span>PROCEED TO NEXT ROUND</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <div className="w-full py-3.5 px-4 rounded-2xl bg-slate-800/90 border border-slate-700 text-slate-300 font-semibold text-xs flex items-center justify-center gap-3 shadow-inner">
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+              <span>Waiting for host (<strong className="text-white">{hostName}</strong>) to start next round...</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

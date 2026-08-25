@@ -5,6 +5,7 @@ import PlayerSeat from './PlayerSeat.js';
 import CardHand from './CardHand.js';
 import TrickArea from './TrickArea.js';
 import PassingPanel from './PassingPanel.js';
+import PassedCardsModal from './PassedCardsModal.js';
 import { RoundSummaryModal, GameOverModal, ScoreModal, ExitConfirmModal } from './GameModals.js';
 
 const QUICK_MSGS = ['Randi','Lawda','Madarchod','Mauga','chutiya'];
@@ -16,6 +17,7 @@ export default function MobileGameTable({ gameState, onPlayCard, onSubmitPass, o
   const [showMsgMenu, setShowMsgMenu] = useState(false);
   const [showGameOver, setShowGameOver] = useState(false);
   const [roundSummary, setRoundSummary] = useState(null);
+  const [dismissedPassHand, setDismissedPassHand] = useState(null);
   const [toasts, setToasts] = useState({});
   const [turnSecs, setTurnSecs] = useState(20);
   const prevPhase = useRef(null);
@@ -24,6 +26,9 @@ export default function MobileGameTable({ gameState, onPlayCard, onSubmitPass, o
   const isPassingPhase = gameState.phase === 'PASSING';
   const isTrickFull = gameState.currentTrick.cards.length === 4;
   const isMyTurn = gameState.phase === 'PLAYER_TURN' && gameState.currentTurnSeatIndex === mySeat && !isTrickFull;
+
+  const showPassedModal = Boolean(gameState.lastReceivedPassedCards) && gameState.lastReceivedPassedCards?.handNumber !== dismissedPassHand;
+  const passedFromPlayer = gameState.lastReceivedPassedCards ? gameState.players.find(p => p.seatIndex === gameState.lastReceivedPassedCards.fromSeatIndex) : null;
 
   // Reset pass selection on new hand/phase
   useEffect(() => { setSelectedPassIds([]); }, [gameState.handNumber, gameState.phase]);
@@ -38,16 +43,19 @@ export default function MobileGameTable({ gameState, onPlayCard, onSubmitPass, o
     prevPhase.current = gameState.phase;
   }, [gameState.phase]);
 
-  // Turn countdown
+  // Turn countdown (starts after passed cards modal closes)
   useEffect(() => {
-    if (gameState.phase !== 'PLAYER_TURN' || isTrickFull) return;
+    if (gameState.phase !== 'PLAYER_TURN' || isTrickFull || showPassedModal) {
+      if (showPassedModal) setTurnSecs(20);
+      return;
+    }
     setTurnSecs(20);
     const iv = setInterval(() => setTurnSecs(p => {
       if (p <= 1) { clearInterval(iv); if (isMyTurn && gameState.legalPlayCardIds.length > 0) onPlayCard(gameState.legalPlayCardIds[0]); return 0; }
       return p - 1;
     }), 1000);
     return () => clearInterval(iv);
-  }, [gameState.phase, gameState.currentTurnSeatIndex, gameState.currentTrickNumber, gameState.handNumber]);
+  }, [gameState.phase, gameState.currentTurnSeatIndex, gameState.currentTrickNumber, gameState.handNumber, showPassedModal]);
 
   // Listen for quick messages from other players
   useEffect(() => {
@@ -200,8 +208,28 @@ export default function MobileGameTable({ gameState, onPlayCard, onSubmitPass, o
       </View>
 
       {/* ── MODALS ── */}
+      {showPassedModal && gameState.lastReceivedPassedCards && (
+        <PassedCardsModal
+          isOpen={true}
+          cards={gameState.lastReceivedPassedCards.cards}
+          fromPlayer={passedFromPlayer}
+          onClose={() => setDismissedPassHand(gameState.lastReceivedPassedCards.handNumber)}
+          autoCloseSeconds={10}
+        />
+      )}
       <ScoreModal isOpen={showScore} players={gameState.players} handNumber={gameState.handNumber} trickNumber={gameState.currentTrickNumber} onClose={() => setShowScore(false)} />
-      <RoundSummaryModal isOpen={Boolean(roundSummary)} handResult={roundSummary} players={gameState.players} onContinue={() => setRoundSummary(null)} />
+      <RoundSummaryModal
+        isOpen={Boolean(roundSummary)}
+        handResult={roundSummary}
+        players={gameState.players}
+        isHost={gameState.mySeatIndex === 0}
+        hostName={gameState.players.find(p => p.seatIndex === 0)?.name || 'Host'}
+        onContinue={() => {
+          const socket = getSocket(serverUrl);
+          socket.emit('game:nextRound');
+          setRoundSummary(null);
+        }}
+      />
       <GameOverModal isOpen={showGameOver} winnerTeam={gameState.winnerTeam} players={gameState.players} myTeamId={mySeat % 2 === 0 ? 1 : 2} onPlayAgain={() => { setShowGameOver(false); onLeaveGame(); }} onExitToMenu={onLeaveGame} />
       <ExitConfirmModal isOpen={showExit} isHost={isHost} onReplaceBot={onReplaceWithBot ? () => { setShowExit(false); onReplaceWithBot(); onLeaveGame(); } : null} onExitEnd={onExitAndEndGame ? () => { setShowExit(false); onExitAndEndGame(); onLeaveGame(); } : null} onHostEnd={isHost && onHostEndGame ? () => { setShowExit(false); onHostEndGame(); onLeaveGame(); } : null} onLeave={onLeaveGame} onCancel={() => setShowExit(false)} />
     </SafeAreaView>

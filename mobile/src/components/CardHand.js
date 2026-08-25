@@ -20,7 +20,7 @@ export default function CardHand({ cards, selectedCardIds, legalPlayCardIds, isM
           const isDisabled = isMyTurn && !legalPlayCardIds.includes(card.id) && !isPassingPhase;
 
           return (
-            <View key={card.id} style={[styles.cardWrapper, isSelected && styles.cardSelected]}>
+            <View key={card.id} style={[styles.cardWrapper, { zIndex: isSelected ? 100 + idx : idx + 1 }]}>
               <Card
                 card={card}
                 selected={isSelected && isPassingPhase}
@@ -45,9 +45,8 @@ export default function CardHand({ cards, selectedCardIds, legalPlayCardIds, isM
 
 const styles = StyleSheet.create({
   container: { width: '100%', position: 'relative' },
-  scrollContent: { paddingHorizontal: 8, paddingVertical: 6, gap: 4, alignItems: 'flex-end' },
+  scrollContent: { paddingHorizontal: 8, paddingTop: 18, paddingBottom: 6, gap: 4, alignItems: 'flex-end' },
   cardWrapper: { marginHorizontal: -4 },
-  cardSelected: { zIndex: 10 },
   turnBanner: {
     position: 'absolute', top: -22, left: '50%', transform: [{ translateX: -55 }],
     backgroundColor: '#6366F1', paddingHorizontal: 16, paddingVertical: 3,

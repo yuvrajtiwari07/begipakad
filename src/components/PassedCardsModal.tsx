@@ -20,24 +20,35 @@ export const PassedCardsModal: React.FC<PassedCardsModalProps> = ({
   autoCloseSeconds = 10,
 }) => {
   const [secondsRemaining, setSecondsRemaining] = useState(autoCloseSeconds);
+  const [progressPercent, setProgressPercent] = useState(100);
 
   useEffect(() => {
     if (!isOpen) {
       setSecondsRemaining(autoCloseSeconds);
+      setProgressPercent(100);
       return;
     }
 
     setSecondsRemaining(autoCloseSeconds);
+    setProgressPercent(100);
+
+    const startTime = Date.now();
+    const durationMs = autoCloseSeconds * 1000;
+
     const interval = setInterval(() => {
-      setSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          onClose();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+      const elapsed = Date.now() - startTime;
+      const remainingMs = Math.max(0, durationMs - elapsed);
+      const remainingSecs = Math.ceil(remainingMs / 1000);
+      const pct = (remainingMs / durationMs) * 100;
+
+      setSecondsRemaining(remainingSecs);
+      setProgressPercent(pct);
+
+      if (remainingMs <= 0) {
+        clearInterval(interval);
+        onClose();
+      }
+    }, 50);
 
     return () => clearInterval(interval);
   }, [isOpen, autoCloseSeconds, onClose]);
@@ -138,8 +149,8 @@ export const PassedCardsModal: React.FC<PassedCardsModalProps> = ({
               </div>
               <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-indigo-500 to-indigo-400 transition-all duration-1000 ease-linear rounded-full"
-                  style={{ width: `${(secondsRemaining / autoCloseSeconds) * 100}%` }}
+                  className="h-full bg-gradient-to-r from-indigo-500 to-indigo-400 rounded-full transition-all duration-75 ease-linear"
+                  style={{ width: `${progressPercent}%` }}
                 />
               </div>
             </div>

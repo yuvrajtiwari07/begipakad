@@ -317,8 +317,12 @@ export default function App() {
             isOpen={Boolean(onlineGameState.phase === 'HAND_COMPLETE')}
             handResult={onlineGameState.handHistory[onlineGameState.handHistory.length - 1] || null}
             players={onlineGameState.players}
+            isHost={onlineGameState.mySeatIndex === 0}
+            hostName={onlineGameState.players.find(p => p.seatIndex === 0)?.name || 'Host'}
             onContinue={() => {
-              // Online game automatically transitions when host/players complete
+              if (socketRef.current) {
+                socketRef.current.emit('game:nextRound');
+              }
             }}
           />
 

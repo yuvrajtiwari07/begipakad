@@ -67,7 +67,7 @@ export const Card: React.FC<CardProps> = ({
       className={`relative select-none shrink-0 transition-transform duration-200 text-left font-sans font-semibold flex flex-col justify-between p-1 sm:p-1.5 md:p-2 border
         ${
           selected
-            ? 'border-indigo-400 ring-2 sm:ring-4 ring-indigo-500/30 shadow-2xl bg-white -translate-y-3 sm:-translate-y-6 z-30'
+            ? 'border-indigo-400 ring-2 sm:ring-4 ring-indigo-500/30 shadow-2xl bg-white'
             : disabled
               ? 'bg-slate-200/60 border-slate-400 text-slate-500 opacity-60 shadow-none cursor-not-allowed'
               : playable

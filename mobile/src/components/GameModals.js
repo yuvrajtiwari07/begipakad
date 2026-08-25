@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet } from 'react-native';
 
-export function RoundSummaryModal({ isOpen, handResult, players, onContinue }) {
+export function RoundSummaryModal({ isOpen, handResult, players, onContinue, isHost = true, hostName = 'Host' }) {
   const [tab, setTab] = useState('round');
   if (!isOpen || !handResult) return null;
   const t1 = players.filter(p => p.teamId === 1);
@@ -60,9 +60,15 @@ export function RoundSummaryModal({ isOpen, handResult, players, onContinue }) {
               </View>
             )}
           </ScrollView>
-          <TouchableOpacity style={m.continueBtn} onPress={onContinue}>
-            <Text style={m.continueBtnText}>NEXT ROUND ▶</Text>
-          </TouchableOpacity>
+          {isHost ? (
+            <TouchableOpacity style={m.continueBtn} onPress={onContinue}>
+              <Text style={m.continueBtnText}>PROCEED TO NEXT ROUND ▶</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={m.waitBanner}>
+              <Text style={m.waitText}>Waiting for host ({hostName}) to start next round...</Text>
+            </View>
+          )}
         </View>
       </View>
     </Modal>
@@ -168,6 +174,8 @@ const m = StyleSheet.create({
   bonusText:{color:'#34D399',fontSize:9,fontWeight:'900'},
   continueBtn:{backgroundColor:'#6366F1',borderRadius:14,paddingVertical:14,alignItems:'center',shadowColor:'#6366F1',shadowOpacity:0.4,shadowRadius:6,elevation:5},
   continueBtnText:{color:'#FFF',fontWeight:'900',fontSize:13},
+  waitBanner:{backgroundColor:'#0F172A',borderRadius:14,paddingVertical:14,alignItems:'center',borderWidth:1,borderColor:'#334155'},
+  waitText:{color:'#FCD34D',fontWeight:'700',fontSize:12},
   cancelBtn:{backgroundColor:'#0F172A',borderRadius:14,paddingVertical:12,alignItems:'center',borderWidth:1,borderColor:'#334155'},
   cancelText:{color:'#94A3B8',fontWeight:'700',fontSize:13},
 });

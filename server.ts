@@ -263,6 +263,11 @@ async function startServer() {
       gameManager.handleHostEndGame(currentUserId);
     });
 
+    socket.on('game:nextRound', () => {
+      if (!currentUserId) return;
+      gameManager.handleNextRound(currentUserId);
+    });
+
     socket.on('game:reconnect', (payload) => {
       const clientView = gameManager.handleReconnect(payload.playerId, socket.id);
       if (clientView) {

@@ -76,7 +76,7 @@ export const CardHand: React.FC<CardHandProps> = ({
       </div>
 
       {/* Cards container with responsive touch scrolling & clear bounds */}
-      <div className="w-full max-w-full sm:max-w-4xl md:max-w-5xl overflow-x-auto overflow-y-visible touch-scroll no-scrollbar pt-4 xs:pt-6 pb-2 xs:pb-3 px-2 xs:px-4 sm:px-8 flex justify-start sm:justify-center">
+      <div className="w-full max-w-full sm:max-w-4xl md:max-w-5xl overflow-x-auto overflow-y-visible touch-scroll no-scrollbar pt-8 xs:pt-10 sm:pt-12 pb-2 xs:pb-3 px-2 xs:px-4 sm:px-8 flex justify-start sm:justify-center">
         <div className="min-w-fit mx-auto flex items-end -space-x-3.5 xs:-space-x-4 sm:-space-x-5 md:-space-x-6 px-4 xs:px-6 sm:px-10">
           {cards.map((card, index) => {
             const isSelected = selectedSet.has(card.id);
@@ -90,7 +90,7 @@ export const CardHand: React.FC<CardHandProps> = ({
                   index === 0 ? 'ml-1 xs:ml-2' : ''
                 } ${index === cards.length - 1 ? 'mr-1 xs:mr-2' : ''} hover:z-40 focus-within:z-40 animate-in fade-in slide-in-from-bottom-6`}
                 style={{
-                  zIndex: isSelected ? 35 : index + 1,
+                  zIndex: isSelected ? 100 + index : index + 1,
                   animationDelay: `${index * 35}ms`,
                   animationFillMode: 'both',
                 }}
