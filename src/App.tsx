@@ -321,7 +321,7 @@ export default function App() {
   const isHost = Boolean(currentRoom && currentRoom.hostPlayerId === profile.id);
 
   return (
-    <div className="min-h-screen bg-[#0F172A] text-slate-100 flex flex-col items-center justify-between font-sans selection:bg-indigo-600 selection:text-white">
+    <div className="w-full min-h-screen bg-[#0F172A] text-slate-100 flex flex-col items-center justify-between font-sans selection:bg-indigo-600 selection:text-white pt-safe pb-safe sm:pt-0 sm:pb-0">
       {/* PWA Banner & Offline Status */}
       {!bannerDismissed && (
         <PWAInstallBanner
@@ -360,7 +360,7 @@ export default function App() {
       )}
 
       {currentView === 'room_lobby' && currentRoom && (
-        <div className="w-full min-h-screen flex items-center justify-center p-2 sm:p-4 bg-[#0F172A] overflow-y-auto">
+        <div className="w-full min-h-screen flex items-center justify-center p-2 sm:p-4 bg-[#0F172A] overflow-y-auto pt-safe pb-safe sm:pt-4 sm:pb-4">
           <RoomLobby
             room={currentRoom}
             currentUserId={profile.id}
@@ -416,7 +416,7 @@ export default function App() {
       )}
 
       {currentView === 'menu' && (
-        <div className="w-full max-w-md my-auto p-4 sm:p-6 flex flex-col items-center gap-6">
+        <div className="w-full max-w-md my-auto p-4 sm:p-6 pt-safe pb-safe sm:pt-6 sm:pb-6 flex flex-col items-center gap-6">
           {/* Top Bar with Profile & Settings */}
           <div className="w-full flex items-center justify-between">
             <button

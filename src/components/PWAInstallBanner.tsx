@@ -23,7 +23,7 @@ export function PWAInstallBanner({
   if (isInstalled || !isInstallable) return null;
 
   return (
-    <div className="w-full bg-gradient-to-r from-indigo-900/90 via-purple-900/90 to-slate-900/90 border-b border-indigo-500/30 px-3 py-2 text-white shadow-lg flex items-center justify-between gap-3 text-xs animate-in slide-in-from-top duration-300">
+    <div className="w-full bg-gradient-to-r from-indigo-900/90 via-purple-900/90 to-slate-900/90 border-b border-indigo-500/30 px-3 py-2 pt-safe text-white shadow-lg flex items-center justify-between gap-3 text-xs animate-in slide-in-from-top duration-300">
       <div className="flex items-center gap-2.5 min-w-0">
         <div className="p-1.5 rounded-xl bg-indigo-600/40 border border-indigo-400/40 text-amber-400 shrink-0">
           <Sparkles className="w-4 h-4 fill-amber-400" />

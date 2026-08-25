@@ -254,9 +254,9 @@ export const GameTable: React.FC<GameTableProps> = ({
     }[tableTheme] || 'bg-[#064E3B] border-[#043427]';
 
   return (
-    <div className="w-full min-h-screen bg-[#0F172A] flex flex-col justify-between font-sans text-slate-100 select-none overflow-x-hidden">
-      {/* Top Header Bar */}
-      <header className="h-13 xs:h-14 sm:h-16 bg-[#1E293B] border-b border-slate-700 flex items-center justify-between px-2 xs:px-3 sm:px-8 shrink-0 shadow-lg z-30">
+    <div className="w-full min-h-screen bg-[#0F172A] flex flex-col justify-between font-sans text-slate-100 select-none overflow-x-hidden pt-safe pb-safe sm:pt-0 sm:pb-0">
+      {/* Top Header Bar with mobile margin */}
+      <header className="h-13 xs:h-14 sm:h-16 bg-[#1E293B] border-b border-slate-700 flex items-center justify-between px-2 xs:px-3 sm:px-8 shrink-0 shadow-lg z-30 mt-1 sm:mt-0 pt-1 sm:pt-0">
         <div className="flex items-center gap-2 xs:gap-3 sm:gap-4">
           <div className="w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 bg-indigo-600 rounded-lg flex items-center justify-center font-bold text-sm xs:text-base sm:text-xl shadow-inner text-white">
             BP
@@ -585,7 +585,7 @@ export const GameTable: React.FC<GameTableProps> = ({
       </main>
 
       {/* Footer Bar */}
-      <footer className="h-10 sm:h-12 border-t border-slate-800 flex items-center justify-between px-4 sm:px-8 text-[10px] uppercase tracking-widest text-slate-400 shrink-0 bg-[#0F172A]">
+      <footer className="h-10 sm:h-12 border-t border-slate-800 flex items-center justify-between px-4 sm:px-8 text-[10px] uppercase tracking-widest text-slate-400 shrink-0 bg-[#0F172A] mb-1 sm:mb-0 pb-1 sm:pb-0">
         <div>© 2026 Begi Pakad</div>
         <div className="flex gap-4 sm:gap-6 font-semibold">
           <button
