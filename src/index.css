@@ -39,6 +39,22 @@ html, body {
   -webkit-user-select: none;
 }
 
+/* Sleek custom scrollbars matching dark theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
 /* Optimize smooth touch gestures for mobile cards */
 .touch-scroll {
   -webkit-overflow-scrolling: touch;

@@ -360,7 +360,7 @@ export default function App() {
       )}
 
       {currentView === 'room_lobby' && currentRoom && (
-        <div className="w-full h-screen flex items-center justify-center p-2 sm:p-4 bg-[#0F172A] overflow-y-auto">
+        <div className="w-full h-screen flex items-center justify-center p-2 sm:p-4 bg-[#0F172A] overflow-y-auto no-scrollbar">
           <RoomLobby
             room={currentRoom}
             currentUserId={profile.id}
@@ -416,7 +416,7 @@ export default function App() {
       )}
 
       {currentView === 'menu' && (
-        <div className="w-full max-w-md my-auto p-4 sm:p-6 pt-safe pb-safe flex flex-col items-center gap-4 sm:gap-6 overflow-y-auto max-h-full">
+        <div className="w-full max-w-md my-auto p-4 sm:p-6 pt-safe pb-safe flex flex-col items-center gap-4 sm:gap-6 overflow-y-auto no-scrollbar max-h-full">
           {/* Top Bar with Profile & Settings */}
           <div className="w-full flex items-center justify-between">
             <button
