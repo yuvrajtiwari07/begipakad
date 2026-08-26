@@ -40,19 +40,19 @@ export const TrickArea: React.FC<TrickAreaProps> = ({
     }
   }, [isTrickComplete, currentTrick.trickNumber]);
 
-  // Helper to map seatIndex to relative table position:
-  // 0 -> South (bottom), 1 -> West (left), 2 -> North (top), 3 -> East (right) relative to mySeatIndex
+  // Helper to map seatIndex to relative table position (Anti-Clockwise rotation):
+  // 0 -> South (bottom), 1 -> East (right), 2 -> North (top), 3 -> West (left) relative to mySeatIndex
   const getRelativePosition = (seatIndex: number) => {
     const diff = (seatIndex - mySeatIndex + 4) % 4;
     switch (diff) {
       case 0:
         return 'bottom';
       case 1:
-        return 'left';
+        return 'right';
       case 2:
         return 'top';
       case 3:
-        return 'right';
+        return 'left';
       default:
         return 'bottom';
     }

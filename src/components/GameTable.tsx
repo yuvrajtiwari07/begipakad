@@ -139,20 +139,20 @@ export const GameTable: React.FC<GameTableProps> = ({
     showPassedModal,
   ]);
 
-  // Relative seat mapping:
+  // Relative seat mapping (Anti-Clockwise turn & deal rotation):
   // South (0 offset) -> You
-  // West (1 offset) -> Player to your left
+  // East (1 offset) -> Player to your right
   // North (2 offset) -> Player across (Teammate)
-  // East (3 offset) -> Player to your right
+  // West (3 offset) -> Player to your left
   const getPlayerAtOffset = (offset: number): Player | undefined => {
     const targetSeat = (mySeat + offset) % 4;
     return gameState.players.find((p) => p.seatIndex === targetSeat);
   };
 
   const southPlayer = getPlayerAtOffset(0);
-  const westPlayer = getPlayerAtOffset(1);
+  const eastPlayer = getPlayerAtOffset(1);
   const northPlayer = getPlayerAtOffset(2);
-  const eastPlayer = getPlayerAtOffset(3);
+  const westPlayer = getPlayerAtOffset(3);
 
   const recipientPlayer = gameState.players.find(
     (p) => p.seatIndex === gameState.passingState.targetRecipientSeatIndex,
@@ -303,38 +303,6 @@ export const GameTable: React.FC<GameTableProps> = ({
 
         {/* Right Controls & Live Badge */}
         <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3">
-          {/* Quick Message Dropdown Button */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowQuickMsgMenu((prev) => !prev)}
-              className="p-1.5 xs:p-2 rounded-lg sm:rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition flex items-center gap-1 text-xs font-semibold"
-              title="Send Quick Chat"
-            >
-              <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
-              <span className="hidden md:inline">Taunt</span>
-            </button>
-
-            {/* Quick Messages Popup Menu */}
-            {showQuickMsgMenu && (
-              <div className="absolute right-0 top-11 z-50 w-44 bg-slate-900 border border-slate-700 rounded-2xl p-2 shadow-2xl space-y-1 animate-in fade-in zoom-in-95">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1 border-b border-slate-800">
-                  Send Quick Taunt
-                </div>
-                {quickMessages.map((msg) => (
-                  <button
-                    key={msg}
-                    type="button"
-                    onClick={() => handleQuickMsgClick(msg)}
-                    className="w-full text-left px-3 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500/20 rounded-xl transition flex items-center justify-between"
-                  >
-                    <span>{msg}</span>
-                    <span className="text-[10px] text-slate-500">💬</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
           <div className="hidden sm:flex bg-slate-800 px-3 py-1.5 rounded-full border border-slate-600 items-center gap-2">
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
             <span className="text-[11px] uppercase tracking-tighter font-bold text-slate-200">
@@ -581,6 +549,41 @@ export const GameTable: React.FC<GameTableProps> = ({
             turnSecondsRemaining={isMyTurn ? turnSecondsRemaining : undefined}
             onCardClick={handleHandCardClick}
           />
+        </div>
+
+        {/* Floating Bottom-Right Taunt Button */}
+        <div className="absolute bottom-2.5 right-2.5 sm:bottom-5 sm:right-5 z-40">
+          <div className="relative">
+            {/* Quick Messages Popup Menu (Opens Upward) */}
+            {showQuickMsgMenu && (
+              <div className="absolute right-0 bottom-full mb-2.5 z-50 w-44 bg-slate-900/95 border border-slate-700 rounded-2xl p-2 shadow-2xl space-y-1 backdrop-blur-md animate-in fade-in zoom-in-95">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1 border-b border-slate-800">
+                  Send Quick Taunt
+                </div>
+                {quickMessages.map((msg) => (
+                  <button
+                    key={msg}
+                    type="button"
+                    onClick={() => handleQuickMsgClick(msg)}
+                    className="w-full text-left px-3 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500/20 rounded-xl transition flex items-center justify-between"
+                  >
+                    <span>{msg}</span>
+                    <span className="text-[10px] text-slate-500">💬</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowQuickMsgMenu((prev) => !prev)}
+              className="px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-full sm:rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold border-2 border-amber-300 shadow-2xl hover:scale-105 active:scale-95 transition flex items-center gap-1.5 text-xs sm:text-sm"
+              title="Send Quick Taunt"
+            >
+              <MessageSquare className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-slate-950 fill-amber-950/30" />
+              <span>Taunt</span>
+            </button>
+          </div>
         </div>
       </main>
 

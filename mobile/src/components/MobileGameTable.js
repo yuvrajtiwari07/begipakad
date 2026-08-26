@@ -70,8 +70,8 @@ export default function MobileGameTable({ gameState, onPlayCard, onSubmitPass, o
 
   const getPlayerAt = (offset) => gameState.players.find(p => p.seatIndex === (mySeat + offset) % 4);
   const northPlayer = getPlayerAt(2);
-  const westPlayer = getPlayerAt(1);
-  const eastPlayer = getPlayerAt(3);
+  const eastPlayer = getPlayerAt(1);
+  const westPlayer = getPlayerAt(3);
   const southPlayer = getPlayerAt(0);
 
   const validPassIds = selectedPassIds.filter(id => gameState.myHand.some(c => c.id === id));
@@ -119,22 +119,6 @@ export default function MobileGameTable({ gameState, onPlayCard, onSubmitPass, o
         </View>
 
         <View style={s.headerRight}>
-          {/* Quick msg */}
-          <View style={{position:'relative'}}>
-            <TouchableOpacity style={s.iconBtn} onPress={() => setShowMsgMenu(v => !v)}>
-              <Text>💬</Text>
-            </TouchableOpacity>
-            {showMsgMenu && (
-              <View style={s.msgMenu}>
-                <Text style={s.msgMenuTitle}>SEND TAUNT</Text>
-                {QUICK_MSGS.map(msg => (
-                  <TouchableOpacity key={msg} style={s.msgItem} onPress={() => handleQuickMsg(msg)}>
-                    <Text style={s.msgItemText}>{msg}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
           <TouchableOpacity style={s.iconBtn} onPress={() => setShowScore(true)}><Text>📊</Text></TouchableOpacity>
           <TouchableOpacity style={[s.iconBtn,{borderColor:'#7F1D1D'}]} onPress={() => (onReplaceWithBot || onExitAndEndGame) ? setShowExit(true) : onLeaveGame()}>
             <Text>🚪</Text>
@@ -205,6 +189,23 @@ export default function MobileGameTable({ gameState, onPlayCard, onSubmitPass, o
             onCardClick={handleCardClick}
           />
         </View>
+
+        {/* Bottom Right Floating Taunt Button */}
+        <View style={s.tauntContainer}>
+          {showMsgMenu && (
+            <View style={s.msgMenu}>
+              <Text style={s.msgMenuTitle}>SEND TAUNT</Text>
+              {QUICK_MSGS.map(msg => (
+                <TouchableOpacity key={msg} style={s.msgItem} onPress={() => handleQuickMsg(msg)}>
+                  <Text style={s.msgItemText}>{msg}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          <TouchableOpacity style={s.tauntBtn} onPress={() => setShowMsgMenu(v => !v)}>
+            <Text style={s.tauntBtnText}>💬 Taunt</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ── MODALS ── */}
@@ -249,11 +250,14 @@ const s = StyleSheet.create({
   statVal:{color:'#E2E8F0',fontWeight:'900'},
   headerRight:{flexDirection:'row',gap:6,alignItems:'center'},
   iconBtn:{padding:7,backgroundColor:'#0F172A',borderWidth:1,borderColor:'#334155',borderRadius:10},
-  msgMenu:{position:'absolute',right:0,top:36,width:160,backgroundColor:'#1E293B',borderWidth:1,borderColor:'#334155',borderRadius:16,padding:8,gap:4,zIndex:100,shadowColor:'#000',shadowOpacity:0.5,shadowRadius:8,elevation:20},
+  tauntContainer:{position:'absolute',bottom:12,right:10,zIndex:40},
+  tauntBtn:{backgroundColor:'#F59E0B',paddingHorizontal:14,paddingVertical:8,borderRadius:20,borderWidth:1.5,borderColor:'#FDE68A',shadowColor:'#000',shadowOpacity:0.4,shadowRadius:6,elevation:8},
+  tauntBtnText:{color:'#0F172A',fontWeight:'900',fontSize:12},
+  msgMenu:{position:'absolute',right:0,bottom:44,width:150,backgroundColor:'#1E293B',borderWidth:1,borderColor:'#334155',borderRadius:16,padding:8,gap:4,zIndex:100,shadowColor:'#000',shadowOpacity:0.5,shadowRadius:8,elevation:20},
   msgMenuTitle:{color:'#475569',fontSize:8,fontWeight:'900',textTransform:'uppercase',letterSpacing:1,paddingHorizontal:6,paddingBottom:4,borderBottomWidth:1,borderBottomColor:'#0F172A'},
   msgItem:{paddingHorizontal:10,paddingVertical:8,borderRadius:10},
   msgItemText:{color:'#FCD34D',fontWeight:'700',fontSize:12},
-  table:{flex:1,margin:6,borderRadius:16,borderWidth:3,borderColor:'#064E3B',backgroundColor:'#064E3B',flexDirection:'column',justifyContent:'space-between',overflow:'hidden'},
+  table:{flex:1,margin:6,borderRadius:16,borderWidth:3,borderColor:'#064E3B',backgroundColor:'#064E3B',flexDirection:'column',justifyContent:'space-between',overflow:'hidden',position:'relative'},
   scoreStrip:{flexDirection:'row',justifyContent:'center',alignItems:'center',gap:12,paddingVertical:3,backgroundColor:'rgba(0,0,0,0.4)'},
   scoreStripText:{color:'#94A3B8',fontSize:10,fontWeight:'600'},
   scoreStripDivider:{color:'#334155',fontSize:12},

@@ -11,7 +11,7 @@ const SUIT_NAMES = {
 
 function getRelPos(seatIndex, mySeat) {
   const d = (seatIndex - mySeat + 4) % 4;
-  return ['bottom','left','top','right'][d];
+  return ['bottom','right','top','left'][d];
 }
 
 export default function TrickArea({ currentTrick, players, mySeatIndex, lastActionMessage, trickNumber }) {
