@@ -114,7 +114,7 @@ export default function MobileGameTable({ gameState, onPlayCard, onSubmitPass, o
 
         <View style={s.headerCenter}>
           {gameState.roomId ? <Text style={s.statLabel}>Room: <Text style={s.statVal}>{gameState.roomId}</Text></Text> : null}
-          <Text style={s.statLabel}>Hand: <Text style={s.statVal}>{String(gameState.handNumber).padStart(2,'0')}/13</Text></Text>
+          <Text style={s.statLabel}>Round: <Text style={s.statVal}>{gameState.handNumber}</Text></Text>
           <Text style={s.statLabel}>Ser: <Text style={[s.statVal,{color:'#34D399'}]}>{String(gameState.currentTrickNumber).padStart(2,'0')}/13</Text></Text>
         </View>
 

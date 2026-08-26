@@ -107,6 +107,11 @@ export class GameManager {
 
     // If all submitted, engine moves to PLAYER_TURN
     if (engine.getState().phase === 'PLAYER_TURN') {
+      const timer = this.passingTimeoutMap.get(engine.getState().gameId);
+      if (timer) {
+        clearTimeout(timer);
+        this.passingTimeoutMap.delete(engine.getState().gameId);
+      }
       this.checkAndExecuteBotTurns(engine, room);
     }
 
@@ -159,9 +164,27 @@ export class GameManager {
     return { success: true };
   }
 
+  private passingTimeoutMap: Map<string, NodeJS.Timeout> = new Map();
+
   private handleBotPassing(engine: GameEngine, room: Room): void {
     const state = engine.getState();
     if (state.phase !== 'PASSING') return;
+
+    // Set 2-minute (120s) server fallback timer for remaining players to auto-pass
+    const gameId = state.gameId;
+    if (!this.passingTimeoutMap.has(gameId)) {
+      const timer = setTimeout(() => {
+        this.passingTimeoutMap.delete(gameId);
+        if (engine.getState().phase === 'PASSING') {
+          engine.autoPassRemainingPlayers();
+          this.broadcastGameUpdate(engine, room);
+          if (engine.getState().phase === 'PLAYER_TURN') {
+            this.checkAndExecuteBotTurns(engine, room);
+          }
+        }
+      }, 120000);
+      this.passingTimeoutMap.set(gameId, timer);
+    }
 
     for (const p of room.players) {
       if (p.isBot) {
@@ -176,6 +199,11 @@ export class GameManager {
             this.broadcastGameUpdate(engine, room);
 
             if (engine.getState().phase === 'PLAYER_TURN') {
+              const timer = this.passingTimeoutMap.get(gameId);
+              if (timer) {
+                clearTimeout(timer);
+                this.passingTimeoutMap.delete(gameId);
+              }
               this.checkAndExecuteBotTurns(engine, room);
             }
           }

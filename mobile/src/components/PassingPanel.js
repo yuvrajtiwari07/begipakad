@@ -6,9 +6,20 @@ export default function PassingPanel({ selectedCardIds, targetRecipient, hasSubm
 
   useEffect(() => {
     setTimeLeft(timeRemainingSeconds);
-    const t = setInterval(() => setTimeLeft(p => p <= 1 ? (clearInterval(t), 0) : p-1), 1000);
+    const t = setInterval(() => {
+      setTimeLeft(p => {
+        if (p <= 1) {
+          clearInterval(t);
+          if (!hasSubmitted && onAutoSelect) {
+            onAutoSelect();
+          }
+          return 0;
+        }
+        return p - 1;
+      });
+    }, 1000);
     return () => clearInterval(t);
-  }, [timeRemainingSeconds]);
+  }, [timeRemainingSeconds, hasSubmitted, onAutoSelect]);
 
   const mm = Math.floor(timeLeft/60), ss = timeLeft%60;
   const formatted = `${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;

@@ -285,10 +285,10 @@ export const GameTable: React.FC<GameTableProps> = ({
           )}
           <div className="flex flex-col items-center">
             <span className="text-slate-500 uppercase text-[8px] sm:text-[10px] tracking-widest font-semibold">
-              Hand
+              Round
             </span>
             <span className="text-slate-200 text-[11px] sm:text-xs font-bold">
-              {String(gameState.handNumber).padStart(2, '0')}/13
+              {gameState.handNumber}
             </span>
           </div>
           <div className="flex flex-col items-center">

@@ -33,13 +33,16 @@ export const PassingPanel: React.FC<PassingPanelProps> = ({
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
+          if (!hasSubmitted && onAutoSelect) {
+            onAutoSelect();
+          }
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [timeRemainingSeconds]);
+  }, [timeRemainingSeconds, hasSubmitted, onAutoSelect]);
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;

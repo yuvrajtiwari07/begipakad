@@ -93,7 +93,7 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
           </div>
         </div>
         <div className="text-xs text-slate-400 text-right">
-          Hand <strong className="text-slate-200">#{currentHand}</strong> • Ser{' '}
+          Round <strong className="text-slate-200">#{currentHand}</strong> • Ser{' '}
           <strong className="text-emerald-400">{currentTrickNumber}/13</strong>
         </div>
       </div>
