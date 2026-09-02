@@ -228,6 +228,16 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose 
               </div>
 
               <div className="p-4 rounded-2xl bg-[#0F172A] border border-slate-700 text-xs space-y-2 text-slate-300">
+                <h4 className="font-bold text-white text-xs sm:text-sm">Trick 1 Suit Restrictions</h4>
+                <p>
+                  In the 1st Ser (Trick 1): No player can lead or play <strong>Spades (♠)</strong> or <strong>Hearts (♥)</strong> if they hold any <strong>Clubs (♣)</strong> or <strong>Diamonds (♦)</strong> in hand.
+                </p>
+                <p>
+                  If a player holds no Clubs or Diamonds in Trick 1, the enforced card priority is: <strong>Club/Diamond &gt; Spade (except Q♠) &gt; Hearts &gt; Q♠</strong>.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#0F172A] border border-slate-700 text-xs space-y-2 text-slate-300">
                 <h4 className="font-bold text-white text-xs sm:text-sm">Trick Winner Determination</h4>
                 <p>
                   The highest card of the <strong>Lead Suit</strong> wins the Ser. No trump exists. The winner collects all 4 cards and leads the next Ser.

@@ -289,6 +289,13 @@ export class GameManager {
     if (!player) return null;
 
     player.isConnected = true;
+    player.socketId = socketId;
+
+    const clientSocket = this.io.sockets.sockets.get(socketId);
+    if (clientSocket) {
+      clientSocket.join(room.roomId);
+    }
+
     this.io.to(room.roomId).emit('game:playerReconnected', playerId);
     return engine.getClientView(player.seatIndex);
   }

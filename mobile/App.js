@@ -46,12 +46,20 @@ export default function App() {
 
   const initSocket = () => {
     const socket = getSocket(serverUrl);
+    socket.off('connect');
     socket.off('room:created'); socket.off('room:joined'); socket.off('room:updated');
     socket.off('room:closed'); socket.off('room:error'); socket.off('matchmaking:status');
     socket.off('game:started'); socket.off('game:stateUpdate'); socket.off('game:ended');
     socket.off('game:abandoned'); socket.off('error:message');
 
-    socket.emit('user:init', { id: profileId.current, name: playerName, avatarSeed: 'avatar_1' });
+    const handleConnect = () => {
+      socket.emit('user:init', { id: profileId.current, name: playerName, avatarSeed: 'avatar_1' });
+    };
+
+    if (socket.connected) {
+      handleConnect();
+    }
+    socket.on('connect', handleConnect);
 
     socket.on('room:created', (room) => { setRoomInfo(room); setIsHost(room.hostPlayerId === profileId.current); setView('room_lobby'); });
     socket.on('room:joined', (room) => { setRoomInfo(room); setIsHost(room.hostPlayerId === profileId.current); setView('room_lobby'); });

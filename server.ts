@@ -47,10 +47,24 @@ async function startServer() {
       currentUserAvatar = profile.avatarSeed;
       gameManager.registerPlayerSocket(profile.id, socket.id);
 
+      // Check if player is in a lobby room before game start
+      const existingRoom = roomManager.getRoomByPlayerId(profile.id);
+      if (existingRoom) {
+        const roomPlayer = existingRoom.players.find((p) => p.id === profile.id);
+        if (roomPlayer) {
+          roomPlayer.socketId = socket.id;
+          roomPlayer.isConnected = true;
+        }
+        socket.join(existingRoom.roomId);
+        socket.emit('room:joined', existingRoom.toInfo());
+        io.to(existingRoom.roomId).emit('room:updated', existingRoom.toInfo());
+      }
+
       // Check if player has an active game to reconnect to
       const reconnectView = gameManager.handleReconnect(profile.id, socket.id);
       if (reconnectView) {
         socket.emit('game:started', reconnectView);
+        socket.emit('game:stateUpdate', reconnectView);
       }
     });
 

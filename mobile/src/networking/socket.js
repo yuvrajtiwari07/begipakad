@@ -11,8 +11,9 @@ export function getSocket(customUrl) {
     socket = io(targetUrl, {
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
       transports: ['websocket', 'polling'],
     });
   }

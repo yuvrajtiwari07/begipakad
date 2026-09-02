@@ -9,8 +9,9 @@ export function getSocket(): Socket<ServerToClientEvents, ClientToServerEvents> 
     socket = io(socketUrl, {
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
   }
   return socket;

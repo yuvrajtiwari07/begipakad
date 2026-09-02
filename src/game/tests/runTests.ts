@@ -164,7 +164,7 @@ function runAllTests() {
     'First round lead cannot be Hukum ♠ or Paan ♥ (only Club/Diamond allowed)',
   );
 
-  // Test 13: Trick 1 Q♠ Prohibition Rule (No player can play Q♠ during Trick 1 even if missing lead suit)
+  // Test 13: Trick 1 Off-Suit Rule: Cannot throw Spade or Heart if Club/Diamond is held
   const trick1LeadEent: Trick = {
     trickNumber: 1,
     leadSuit: 'EENT',
@@ -178,8 +178,30 @@ function runAllTests() {
   ];
   const legalPlaysTrick1 = getLegalCardsToPlay(handTrick1NoEentWithQ, trick1LeadEent);
   assert(
-    !legalPlaysTrick1.some((c) => c.isBegumHukum) && legalPlaysTrick1.length === 2,
-    'Queen of Spades (Q♠) cannot be played during Trick 1',
+    legalPlaysTrick1.length === 1 && legalPlaysTrick1[0].suit === 'CHIDI',
+    'Trick 1 off-suit: Must play Club/Diamond if held (cannot throw Spade/Heart)',
+  );
+
+  // Test 14: Trick 1 Priority fallback when NO Club/Diamond held (Spade except Q > Hearts > Q♠)
+  const handNoClubDiamond: Card[] = [
+    createCard('HUKUM', '5'),
+    createCard('PAAN', '8'),
+    createCard('HUKUM', 'Q'),
+  ];
+  const legalFallbackSpade = getLegalCardsToPlay(handNoClubDiamond, trick1LeadEent);
+  assert(
+    legalFallbackSpade.length === 1 && legalFallbackSpade[0].suit === 'HUKUM' && legalFallbackSpade[0].rank === '5',
+    'Trick 1 fallback: Spades (except Q♠) takes priority over Hearts',
+  );
+
+  const handOnlyHeartsAndBegum: Card[] = [
+    createCard('PAAN', '8'),
+    createCard('HUKUM', 'Q'),
+  ];
+  const legalFallbackHearts = getLegalCardsToPlay(handOnlyHeartsAndBegum, trick1LeadEent);
+  assert(
+    legalFallbackHearts.length === 1 && legalFallbackHearts[0].suit === 'PAAN',
+    'Trick 1 fallback: Hearts takes priority over Q♠ when no other Spade exists',
   );
 
   console.log('🎉 ALL BEGI PAKAD UNIT TESTS PASSED SUCCESSFULLY! 🎉');

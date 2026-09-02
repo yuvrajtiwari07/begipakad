@@ -86,11 +86,18 @@ export default function App() {
   useEffect(() => {
     const socket = getSocket();
 
-    socket.emit('user:init', {
-      id: profile.id,
-      name: profile.name,
-      avatarSeed: profile.avatarSeed,
-    });
+    const handleConnect = () => {
+      socket.emit('user:init', {
+        id: profile.id,
+        name: profile.name,
+        avatarSeed: profile.avatarSeed,
+      });
+    };
+
+    if (socket.connected) {
+      handleConnect();
+    }
+    socket.on('connect', handleConnect);
 
     socket.on('room:created', (room) => {
       setCurrentRoom(room);
@@ -163,6 +170,7 @@ export default function App() {
     });
 
     return () => {
+      socket.off('connect', handleConnect);
       socket.off('room:created');
       socket.off('room:joined');
       socket.off('room:updated');
