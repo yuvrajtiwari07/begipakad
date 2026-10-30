@@ -154,7 +154,7 @@ export const RoomLobby: React.FC<RoomLobbyProps> = ({
                       {player ? player.name : `Seat ${seatIndex + 1}`}
                     </span>
                     <span
-                      className={`text-[9px] px-1.5 py-0.2 rounded font-bold whitespace-nowrap shrink-0 ${
+                      className={`text-[9px] px-1.5 py-px rounded font-bold whitespace-nowrap shrink-0 ${
                         teamId === 1
                           ? 'bg-indigo-950 text-indigo-300 border border-indigo-800/40'
                           : 'bg-amber-950 text-amber-300 border border-amber-800/40'

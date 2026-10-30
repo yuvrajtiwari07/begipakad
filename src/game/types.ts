@@ -41,6 +41,7 @@ export interface Player {
   botDifficulty?: 'easy' | 'medium' | 'hard';
   isConnected: boolean;
   score: number; // Cumulative game score (e.g. 72)
+  roundStartScore?: number; // Score when the current round began; decides the 75-point Q♠ rule
   tricksWonThisHand: number; // Count of Ser won in current hand (0-13)
   cardsRemaining: number;
 }
@@ -100,6 +101,7 @@ export interface HandScoreResult {
   finalScores: Record<number, number>;
   losingTeam?: TeamId;
   losingPlayers?: number[];
+  isPartial?: boolean; // game ended before all 13 Ser were played
 }
 
 export interface FullGameState {
@@ -156,6 +158,9 @@ export interface ClientGameState {
   lastActionMessage?: string;
   legalPlayCardIds: string[]; // Valid cards current player can play
   turnTimeLimitSeconds?: number;
+  // Online games only (set by the server, absent in offline bot games)
+  hostPlayerId?: string; // room host: may end the game for everyone
+  nextRoundSeatIndex?: number; // seat allowed to start the next round
 }
 
 export interface UserProfile {

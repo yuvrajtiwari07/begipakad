@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Settings, Volume2, VolumeX, Smartphone, Palette } from 'lucide-react';
 import { sounds } from '../services/audio';
 import { haptics } from '../services/haptics';
@@ -22,6 +22,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   const [soundEnabled, setSoundEnabled] = useState(sounds.isEnabled());
   const [hapticsEnabled, setHapticsEnabled] = useState(haptics.isEnabled());
+
+  // Sound can also be toggled from the game table; re-read it each time Settings opens
+  useEffect(() => {
+    if (isOpen) {
+      setSoundEnabled(sounds.isEnabled());
+      setHapticsEnabled(haptics.isEnabled());
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

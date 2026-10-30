@@ -30,8 +30,8 @@ export const Card: React.FC<CardProps> = ({
 }) => {
   // Explicit responsive dimensions based on size archetype
   const sizeClasses = {
-    sm: 'w-[42px] h-[60px] xs:w-[48px] xs:h-[68px] sm:w-[56px] sm:h-[80px] md:w-[64px] md:h-[92px] rounded-md sm:rounded-lg',
-    md: 'w-[46px] h-[68px] xs:w-[54px] xs:h-[78px] sm:w-[68px] sm:h-[98px] md:w-[78px] md:h-[112px] rounded-lg sm:rounded-xl',
+    sm: 'w-[42px] h-[60px] xs:w-[48px] xs:h-[68px] sm:w-[56px] sm:h-[80px] md:w-[64px] md:h-[92px] compact:md:w-[56px] compact:md:h-[80px] short:w-[38px] short:h-[54px] rounded-md sm:rounded-lg',
+    md: 'w-[46px] h-[68px] xs:w-[54px] xs:h-[78px] sm:w-[68px] sm:h-[98px] md:w-[78px] md:h-[112px] compact:md:w-[68px] compact:md:h-[98px] short:w-[48px] short:h-[70px] rounded-lg sm:rounded-xl',
     lg: 'w-[64px] h-[92px] xs:w-[76px] xs:h-[108px] sm:w-[88px] sm:h-[124px] md:w-[98px] md:h-[140px] rounded-xl sm:rounded-2xl',
   }[size];
 

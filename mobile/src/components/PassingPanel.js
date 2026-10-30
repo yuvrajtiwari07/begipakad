@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
 export default function PassingPanel({ selectedCardIds, targetRecipient, hasSubmitted, timeRemainingSeconds=120, onPassSubmit, onAutoSelect, canReceivePaan, selectedCardsContainPaan }) {
   const [timeLeft, setTimeLeft] = useState(timeRemainingSeconds);
+  // Read through a ref: submitting must not restart the countdown
+  const hasSubmittedRef = useRef(hasSubmitted);
+  hasSubmittedRef.current = hasSubmitted;
 
   useEffect(() => {
     setTimeLeft(timeRemainingSeconds);
@@ -10,7 +13,7 @@ export default function PassingPanel({ selectedCardIds, targetRecipient, hasSubm
       setTimeLeft(p => {
         if (p <= 1) {
           clearInterval(t);
-          if (!hasSubmitted && onAutoSelect) {
+          if (!hasSubmittedRef.current && onAutoSelect) {
             onAutoSelect();
           }
           return 0;
@@ -19,7 +22,7 @@ export default function PassingPanel({ selectedCardIds, targetRecipient, hasSubm
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [timeRemainingSeconds, hasSubmitted, onAutoSelect]);
+  }, [timeRemainingSeconds, onAutoSelect]);
 
   const mm = Math.floor(timeLeft/60), ss = timeLeft%60;
   const formatted = `${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
@@ -59,7 +62,7 @@ export default function PassingPanel({ selectedCardIds, targetRecipient, hasSubm
         <View style={s.btns}>
           {!hasSubmitted && (
             <TouchableOpacity style={s.autoBtn} onPress={onAutoSelect}>
-              <Text style={s.autoBtnText}>Auto-Select</Text>
+              <Text style={s.autoBtnText}>Auto-Pass</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity

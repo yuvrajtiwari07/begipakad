@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Bot,
   PlusCircle,
@@ -73,6 +73,10 @@ export default function App() {
   const [showJoinRoomModal, setShowJoinRoomModal] = useState(false);
   const [joinRoomInput, setJoinRoomInput] = useState('');
   const [joinRoomError, setJoinRoomError] = useState('');
+  // The Join Room box stays open until the server answers, so its inline error is visible
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
+  const isJoiningRoomRef = useRef(false);
+  isJoiningRoomRef.current = isJoiningRoom;
 
   // Online Multiplayer State
   const [currentRoom, setCurrentRoom] = useState<RoomInfo | null>(null);
@@ -81,23 +85,40 @@ export default function App() {
   const [matchmakingPlayersCount, setMatchmakingPlayersCount] = useState(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isGameOverModalOpen, setIsGameOverModalOpen] = useState(false);
+  const [isSocketConnected, setIsSocketConnected] = useState(true);
+  const isMatchmakingRef = useRef(false);
+  isMatchmakingRef.current = isMatchmaking;
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // One timer for the toast, so a newer error gets its full time on screen
+  const showError = (msg: string, ms = 4000) => {
+    setErrorMessage(msg);
+    clearTimeout(errorTimerRef.current);
+    errorTimerRef.current = setTimeout(() => setErrorMessage(null), ms);
+  };
 
   // Setup Socket.IO connection
   useEffect(() => {
     const socket = getSocket();
 
-    const handleConnect = () => {
+    // The handshake identifies us on every (re)connect; this only pushes profile
+    // edits made while already connected.
+    if (socket.connected) {
       socket.emit('user:init', {
         id: profile.id,
         name: profile.name,
         avatarSeed: profile.avatarSeed,
       });
-    };
-
-    if (socket.connected) {
-      handleConnect();
     }
+
+    const handleConnect = () => {
+      setIsSocketConnected(true);
+      // The server drops us from the queue when the connection is lost; rejoin it
+      if (isMatchmakingRef.current) socket.emit('matchmaking:join');
+    };
+    const handleDisconnect = () => setIsSocketConnected(false);
     socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
 
     socket.on('room:created', (room) => {
       setCurrentRoom(room);
@@ -107,6 +128,9 @@ export default function App() {
     socket.on('room:joined', (room) => {
       setCurrentRoom(room);
       setCurrentView('room_lobby');
+      setIsJoiningRoom(false);
+      setShowJoinRoomModal(false);
+      setJoinRoomInput('');
     });
 
     socket.on('room:updated', (room) => {
@@ -114,17 +138,17 @@ export default function App() {
     });
 
     socket.on('room:closed', (msg) => {
-      setErrorMessage(msg);
+      showError(msg, 5000);
       setCurrentRoom(null);
       setOnlineGameState(null);
       setCurrentView('menu');
-      setTimeout(() => setErrorMessage(null), 5000);
     });
 
     socket.on('room:error', (msg) => {
       setJoinRoomError(msg);
-      setErrorMessage(msg);
-      setTimeout(() => setErrorMessage(null), 4000);
+      // While the Join Room box is open the error shows inline there instead of as a toast
+      if (!isJoiningRoomRef.current) showError(msg);
+      setIsJoiningRoom(false);
     });
 
     socket.on('matchmaking:status', (status) => {
@@ -147,7 +171,7 @@ export default function App() {
         const myTeam = (state.mySeatIndex % 2 === 0 ? 1 : 2);
         const isWin = state.winnerTeam === myTeam;
         const zeroSerCount = state.handHistory.filter((h) => h.zeroTrickBonusAwarded[state.mySeatIndex]).length;
-        const updatedProfile = recordGameResult(isWin, zeroSerCount);
+        const updatedProfile = recordGameResult(isWin, zeroSerCount, state.gameId);
         setProfile({ ...updatedProfile });
       }
     });
@@ -157,20 +181,17 @@ export default function App() {
     });
 
     socket.on('game:abandoned', (payload) => {
-      setErrorMessage(payload.message);
+      showError(payload.message, 6000);
       setOnlineGameState(null);
       setCurrentRoom(null);
       setCurrentView('menu');
-      setTimeout(() => setErrorMessage(null), 6000);
     });
 
-    socket.on('error:message', (msg) => {
-      setErrorMessage(msg);
-      setTimeout(() => setErrorMessage(null), 4000);
-    });
+    socket.on('error:message', (msg) => showError(msg));
 
     return () => {
       socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
       socket.off('room:created');
       socket.off('room:joined');
       socket.off('room:updated');
@@ -184,6 +205,19 @@ export default function App() {
       socket.off('error:message');
     };
   }, [profile.id, profile.name, profile.avatarSeed]);
+
+  // PWA home-screen shortcuts open /?mode=local or /?mode=create (see vite.config.ts)
+  useEffect(() => {
+    const mode = new URLSearchParams(window.location.search).get('mode');
+    if (!mode) return;
+    // Drop the param so a refresh doesn't repeat the action
+    window.history.replaceState(null, '', window.location.pathname);
+    if (mode === 'local') {
+      setCurrentView('local_bots');
+    } else if (mode === 'create') {
+      getSocket().emit('room:create');
+    }
+  }, []);
 
   const triggerFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -223,9 +257,9 @@ export default function App() {
     setCurrentRoom(null);
     setIsMatchmaking(false);
     const socket = getSocket();
+    setJoinRoomError('');
+    setIsJoiningRoom(true);
     socket.emit('room:join', joinRoomInput.trim().toUpperCase());
-    setShowJoinRoomModal(false);
-    setJoinRoomInput('');
   };
 
   const handleStartRandomMatch = () => {
@@ -326,12 +360,12 @@ export default function App() {
     setIsGameOverModalOpen(false);
   };
 
-  const isHost = Boolean(currentRoom && currentRoom.hostPlayerId === profile.id);
+  const isHost = (onlineGameState?.hostPlayerId ?? currentRoom?.hostPlayerId) === profile.id;
 
   return (
-    <div className="w-full h-screen h-[100dvh] bg-[#0F172A] text-slate-100 flex flex-col items-center justify-between font-sans selection:bg-indigo-600 selection:text-white overflow-hidden">
+    <div className="w-full h-dvh bg-[#0F172A] text-slate-100 flex flex-col items-center justify-between font-sans selection:bg-indigo-600 selection:text-white overflow-hidden">
       {/* PWA Banner & Offline Status */}
-      {!bannerDismissed && (
+      {!bannerDismissed && currentView === 'menu' && (
         <PWAInstallBanner
           isInstallable={isInstallable}
           isInstalled={isInstalled}
@@ -348,6 +382,13 @@ export default function App() {
         onUpdate={updateServiceWorker}
         onDismiss={dismissUpdate}
       />
+
+      {/* Online game reconnect status, so players wait instead of refreshing */}
+      {!isSocketConnected && (currentView === 'online_game' || currentView === 'room_lobby') && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-amber-950/90 border border-amber-500/50 text-amber-200 text-xs font-bold shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top">
+          Connection lost. Reconnecting…
+        </div>
+      )}
 
       {/* Toast Error Banner */}
       {errorMessage && (
@@ -368,7 +409,7 @@ export default function App() {
       )}
 
       {currentView === 'room_lobby' && currentRoom && (
-        <div className="w-full h-screen flex items-center justify-center p-2 sm:p-4 bg-[#0F172A] overflow-y-auto no-scrollbar">
+        <div className="w-full flex-1 min-h-0 flex items-center justify-center p-2 sm:p-4 bg-[#0F172A] overflow-y-auto no-scrollbar">
           <RoomLobby
             room={currentRoom}
             currentUserId={profile.id}
@@ -381,7 +422,7 @@ export default function App() {
       )}
 
       {currentView === 'online_game' && onlineGameState && (
-        <div className="w-full h-screen flex flex-col items-center bg-[#0F172A]">
+        <div className="w-full flex-1 min-h-0 flex flex-col items-center bg-[#0F172A]">
           <GameTable
             gameState={onlineGameState}
             onPlayCard={handleOnlinePlayCard}
@@ -401,8 +442,8 @@ export default function App() {
             isOpen={Boolean(onlineGameState.phase === 'HAND_COMPLETE')}
             handResult={onlineGameState.handHistory[onlineGameState.handHistory.length - 1] || null}
             players={onlineGameState.players}
-            isHost={onlineGameState.mySeatIndex === 0}
-            hostName={onlineGameState.players.find(p => p.seatIndex === 0)?.name || 'Host'}
+            isHost={onlineGameState.mySeatIndex === (onlineGameState.nextRoundSeatIndex ?? 0)}
+            hostName={onlineGameState.players.find(p => p.seatIndex === (onlineGameState.nextRoundSeatIndex ?? 0))?.name || 'Host'}
             onContinue={() => {
               getSocket().emit('game:nextRound');
             }}
@@ -413,11 +454,8 @@ export default function App() {
             winnerTeam={onlineGameState.winnerTeam}
             losingTeam={onlineGameState.losingTeam}
             players={onlineGameState.players}
+            handHistory={onlineGameState.handHistory}
             myTeamId={(onlineGameState.mySeatIndex % 2 === 0 ? 1 : 2)}
-            onPlayAgain={() => {
-              setIsGameOverModalOpen(false);
-              handleExitToMenu();
-            }}
             onExitToMenu={handleExitToMenu}
           />
         </div>
@@ -668,17 +706,20 @@ export default function App() {
               <div className="flex gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => setShowJoinRoomModal(false)}
+                  onClick={() => {
+                    setShowJoinRoomModal(false);
+                    setIsJoiningRoom(false);
+                  }}
                   className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={!joinRoomInput.trim()}
+                  disabled={!joinRoomInput.trim() || isJoiningRoom}
                   className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer"
                 >
-                  Join Room
+                  {isJoiningRoom ? 'Joining…' : 'Join Room'}
                 </button>
               </div>
             </form>

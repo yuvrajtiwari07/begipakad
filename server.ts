@@ -3,7 +3,7 @@ import http from 'http';
 import path from 'path';
 import { Server, Socket } from 'socket.io';
 import { createServer as createViteServer } from 'vite';
-import { GameManager } from './server/src/game/GameManager.ts';
+import { GameManager, playerChannel } from './server/src/game/GameManager.ts';
 import { MatchmakingService } from './server/src/matchmaking/MatchmakingService.ts';
 import { RoomManager, RoomPlayer } from './server/src/rooms/RoomManager.ts';
 import { ClientToServerEvents, ServerToClientEvents } from './src/game/types.ts';
@@ -18,13 +18,28 @@ async function startServer() {
       origin: '*',
       methods: ['GET', 'POST'],
     },
+    // Detect dead mobile connections in ~20s instead of the default ~45s
+    pingInterval: 10000,
+    pingTimeout: 10000,
   });
 
   const roomManager = new RoomManager();
   const matchmakingService = new MatchmakingService();
-  const gameManager = new GameManager(io);
+  const gameManager = new GameManager(io, roomManager);
 
   app.use(express.json());
+
+  // Tell everyone still waiting how full the queue is
+  const broadcastQueueStatus = () => {
+    const queuePlayers = matchmakingService.getQueuePlayers();
+    for (const qp of queuePlayers) {
+      io.to(playerChannel(qp.id)).emit('matchmaking:status', {
+        inQueue: true,
+        playersCount: queuePlayers.length,
+        targetCount: 4,
+      });
+    }
+  };
 
   // API Routes
   app.get('/api/health', (req, res) => {
@@ -41,15 +56,25 @@ async function startServer() {
     let currentUserName: string = 'Player';
     let currentUserAvatar: string = 'avatar_1';
 
-    socket.on('user:init', (profile) => {
+    // Clients that don't identify in the handshake (older mobile builds) send user:init
+    // only after anything they queued while connecting, e.g. matchmaking:join. Hold those
+    // events until we know the user instead of silently dropping them.
+    const deferredUntilInit: (() => void)[] = [];
+    socket.use(([event], next) => {
+      if (currentUserId || event === 'user:init') return next();
+      if (deferredUntilInit.length < 20) deferredUntilInit.push(next);
+    });
+
+    const initUser = (profile: { id: string; name: string; avatarSeed: string }) => {
+      if (!profile || typeof profile.id !== 'string' || !profile.id) return;
       currentUserId = profile.id;
-      currentUserName = profile.name;
-      currentUserAvatar = profile.avatarSeed;
+      currentUserName = profile.name || currentUserName;
+      currentUserAvatar = profile.avatarSeed || currentUserAvatar;
       gameManager.registerPlayerSocket(profile.id, socket.id);
 
       // Check if player is in a lobby room before game start
       const existingRoom = roomManager.getRoomByPlayerId(profile.id);
-      if (existingRoom) {
+      if (existingRoom && !existingRoom.isGameStarted) {
         const roomPlayer = existingRoom.players.find((p) => p.id === profile.id);
         if (roomPlayer) {
           roomPlayer.socketId = socket.id;
@@ -66,7 +91,14 @@ async function startServer() {
         socket.emit('game:started', reconnectView);
         socket.emit('game:stateUpdate', reconnectView);
       }
-    });
+
+      deferredUntilInit.splice(0).forEach((run) => run());
+    };
+
+    // Current web and mobile clients identify themselves in the handshake, so the user is
+    // known before any buffered action (e.g. a card tapped while reconnecting) is processed.
+    initUser(socket.handshake.auth?.profile);
+    socket.on('user:init', initUser);
 
     const cleanupPlayerState = (playerId: string) => {
       matchmakingService.leaveQueue(playerId);
@@ -187,6 +219,11 @@ async function startServer() {
     socket.on('matchmaking:join', () => {
       if (!currentUserId) return;
       cleanupPlayerState(currentUserId);
+      // A client re-joining after a reconnect may have been matched while offline
+      if (gameManager.findSessionByPlayerId(currentUserId)) {
+        socket.emit('matchmaking:status', { inQueue: false, playersCount: 0, targetCount: 4 });
+        return;
+      }
       const player: RoomPlayer = {
         id: currentUserId,
         name: currentUserName,
@@ -198,18 +235,8 @@ async function startServer() {
         isConnected: true,
       };
 
-      const status = matchmakingService.joinQueue(player);
-      // Broadcast updated count to all players currently in queue
-      const queuePlayers = matchmakingService.getQueuePlayers();
-      for (const qp of queuePlayers) {
-        if (qp.socketId) {
-          io.to(qp.socketId).emit('matchmaking:status', {
-            inQueue: true,
-            playersCount: queuePlayers.length,
-            targetCount: 4,
-          });
-        }
-      }
+      matchmakingService.joinQueue(player);
+      broadcastQueueStatus();
 
       // Check if 4 matched
       const matched = matchmakingService.getMatchedPlayers();
@@ -219,14 +246,7 @@ async function startServer() {
         for (let i = 1; i < matched.length; i++) {
           room.addPlayer(matched[i]);
         }
-        for (const p of matched) {
-          if (p.socketId) {
-            const clientSocket = io.sockets.sockets.get(p.socketId);
-            if (clientSocket) {
-              clientSocket.join(room.roomId);
-            }
-          }
-        }
+        // startGame joins every matched player's sockets to the game room
         gameManager.startGame(room);
       }
     });
@@ -236,18 +256,7 @@ async function startServer() {
       if (currentUserId) {
         matchmakingService.leaveQueue(currentUserId);
         socket.emit('matchmaking:status', { inQueue: false, playersCount: 0, targetCount: 4 });
-        
-        // Broadcast updated count to remaining players in queue
-        const remaining = matchmakingService.getQueuePlayers();
-        for (const qp of remaining) {
-          if (qp.socketId) {
-            io.to(qp.socketId).emit('matchmaking:status', {
-              inQueue: true,
-              playersCount: remaining.length,
-              targetCount: 4,
-            });
-          }
-        }
+        broadcastQueueStatus();
       }
     });
 
@@ -302,15 +311,21 @@ async function startServer() {
 
     // Disconnect Handler
     socket.on('disconnect', () => {
-      if (currentUserId) {
-        matchmakingService.leaveQueue(currentUserId);
-        gameManager.unregisterSocket(socket.id);
+      // After a refresh the old socket's disconnect can arrive after the new socket
+      // connected; only treat the user as gone if no socket of theirs remains.
+      if (currentUserId && !gameManager.isPlayerOnline(currentUserId)) {
+        if (matchmakingService.isInQueue(currentUserId)) {
+          matchmakingService.leaveQueue(currentUserId);
+          broadcastQueueStatus();
+        }
         const session = gameManager.findSessionByPlayerId(currentUserId);
         if (session) {
           const player = session.room.players.find((p) => p.id === currentUserId);
           if (player) {
             player.isConnected = false;
             io.to(session.room.roomId).emit('game:playerDisconnected', currentUserId);
+            gameManager.broadcastGameUpdate(session.engine, session.room);
+            gameManager.handlePlayerDisconnected(session.engine, session.room, player.seatIndex);
           }
         }
       }

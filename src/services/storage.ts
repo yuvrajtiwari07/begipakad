@@ -44,8 +44,19 @@ export function saveUserProfile(profile: UserProfile): void {
   }
 }
 
-export function recordGameResult(isWin: boolean, zeroSerCount: number): UserProfile {
+const RECORDED_GAME_KEY = 'begi_pakad_last_recorded_game';
+
+export function recordGameResult(isWin: boolean, zeroSerCount: number, gameId?: string): UserProfile {
   const profile = getUserProfile();
+  // Reconnecting to a finished game replays its final state; count it only once
+  if (gameId) {
+    try {
+      if (localStorage.getItem(RECORDED_GAME_KEY) === gameId) return profile;
+      localStorage.setItem(RECORDED_GAME_KEY, gameId);
+    } catch (e) {
+      console.error('Failed to read recorded game', e);
+    }
+  }
   profile.gamesPlayed += 1;
   if (isWin) {
     profile.gamesWon += 1;

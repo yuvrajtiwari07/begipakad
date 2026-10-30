@@ -9,7 +9,8 @@ export interface ScoreZoneInfo {
   description: string;
 }
 
-export function getScoreZone(score: number): ScoreZoneInfo {
+// roundStartScore: Q♠ protection depends on the score when the round began, not the live score
+export function getScoreZone(score: number, roundStartScore: number = score): ScoreZoneInfo {
   if (score >= 100) {
     return {
       zone: 'lost',
@@ -27,17 +28,17 @@ export function getScoreZone(score: number): ScoreZoneInfo {
       badgeColor: 'bg-rose-500 text-white',
       begumHukumPoints: 0,
       canReceivePaanInPassing: false,
-      description: 'Q♠ gives +0 pts. Cannot receive Paan (♥) during passing.',
+      description: 'Cannot receive Paan (♥) during passing.',
     };
   }
-  if (score >= 75) {
+  if (roundStartScore >= 75) {
     return {
       zone: 'hukum_protected',
       label: '⚠️ Hukum Protected',
       badgeColor: 'bg-amber-500 text-white',
       begumHukumPoints: 0,
       canReceivePaanInPassing: true,
-      description: 'Q♠ gives +0 pts. Paan (♥) gives +1 pt and can be passed.',
+      description: 'Started this round at 75+: Q♠ gives +0 pts. Paan (♥) gives +1 pt.',
     };
   }
   return {
@@ -66,6 +67,7 @@ export function calculateTrickPoints(
   cardsInTrick: Card[],
   winnerSeatIndex: number,
   winnerCurrentScore: number,
+  winnerRoundStartScore: number = winnerCurrentScore,
 ): TrickScoreResult {
   let paanCount = 0;
   let hasBegumHukum = false;
@@ -81,9 +83,10 @@ export function calculateTrickPoints(
 
   const paanPoints = paanCount * 1;
 
-  // 75 Point Rule: If winner's score BEFORE this trick is >= 75, Q♠ gives 0 points
+  // 75 Point Rule: Q♠ gives 0 points only if the winner already had 75+ when the round
+  // started. Crossing 75 during the round doesn't count until the next round.
   const begumPoints = hasBegumHukum
-    ? winnerCurrentScore >= 75
+    ? winnerRoundStartScore >= 75
       ? 0
       : 12
     : 0;

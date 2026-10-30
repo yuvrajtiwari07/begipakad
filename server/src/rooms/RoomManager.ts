@@ -140,7 +140,8 @@ export class RoomManager {
 
   public getRoomByPlayerId(playerId: string): Room | undefined {
     for (const room of this.rooms.values()) {
-      if (room.players.some((p) => p.id === playerId)) {
+      // Ignore seats this user handed over to a bot in an earlier game
+      if (room.players.some((p) => p.id === playerId && !p.isBot)) {
         return room;
       }
     }

@@ -26,7 +26,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
   isTrickWinner = false,
   activeToastMessage,
 }) => {
-  const scoreZone = getScoreZone(player.score);
+  const scoreZone = getScoreZone(player.score, player.roundStartScore);
   const isTeam1 = player.teamId === 1;
   const isLowTime = isCurrentTurn && turnSecondsRemaining !== undefined && turnSecondsRemaining <= 5;
 
@@ -37,20 +37,22 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
   return (
     <div
       id={`player-seat-${player.seatIndex}`}
-      className={`relative flex flex-col items-center gap-1 sm:gap-1.5 transition-all duration-300 select-none ${className}`}
+      className={`relative flex flex-col items-center gap-1 sm:gap-1.5 short:gap-0.5 transition-all duration-300 select-none ${className}`}
     >
       {/* Quick Message Speech Bubble Toast */}
       {activeToastMessage && (
-        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 text-xs font-black px-3 py-1 rounded-xl shadow-2xl border-2 border-slate-900 animate-bounce whitespace-nowrap z-50">
+        <div className={`absolute ${position === 'top' ? 'top-full mt-2' : '-top-10'} left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 text-xs font-black px-3 py-1 rounded-xl shadow-2xl border-2 border-slate-900 animate-bounce whitespace-nowrap z-50`}>
           <span>{activeToastMessage}</span>
-          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-6 border-t-amber-400" />
+          {position !== 'top' && (
+            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-6 border-t-amber-400" />
+          )}
         </div>
       )}
 
       {/* Avatar Container */}
       <div className="relative">
         <div
-          className={`w-10 h-10 xs:w-12 xs:h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center font-bold text-white shadow-xl transition-all
+          className={`w-10 h-10 xs:w-12 xs:h-12 sm:w-14 sm:h-14 short:w-9 short:h-9 rounded-full flex items-center justify-center font-bold text-white shadow-xl transition-all
             ${
               isTrickWinner
                 ? 'bg-amber-600 border-2 border-amber-300 ring-2 xs:ring-4 ring-amber-400/70 scale-110 xs:scale-115 animate-bounce shadow-amber-500/50'
@@ -85,7 +87,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
         {/* Turn Countdown Badge */}
         {isCurrentTurn && !isTrickWinner && turnSecondsRemaining !== undefined && (
           <div
-            className={`absolute -bottom-2 left-1/2 -translate-x-1/2 px-1 xs:px-1.5 py-0.2 rounded-full text-[9px] xs:text-[10px] font-mono font-black flex items-center gap-0.5 shadow-lg border z-20 whitespace-nowrap
+            className={`absolute -bottom-2 left-1/2 -translate-x-1/2 px-1 xs:px-1.5 py-px rounded-full text-[9px] xs:text-[10px] font-mono font-black flex items-center gap-0.5 shadow-lg border z-20 whitespace-nowrap
               ${
                 isLowTime
                   ? 'bg-rose-600 text-white border-rose-300 animate-bounce'
@@ -106,7 +108,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
 
         {/* Team Tag Badge */}
         <div
-          className={`absolute -top-1 -left-1 xs:-top-1.5 xs:-left-1.5 text-[8px] xs:text-[9px] font-black px-1 xs:px-1.5 py-0.2 rounded-full border shadow-sm
+          className={`absolute -top-1 -left-1 xs:-top-1.5 xs:-left-1.5 text-[8px] xs:text-[9px] font-black px-1 xs:px-1.5 py-px rounded-full border shadow-sm
             ${
               isTeam1
                 ? 'bg-indigo-600 border-indigo-400 text-white'

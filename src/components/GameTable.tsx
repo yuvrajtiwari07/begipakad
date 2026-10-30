@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Card as CardType, ClientGameState, Player, TeamId } from '../game/types';
 import { CardHand } from './CardHand';
 import { PlayerSeat } from './PlayerSeat';
@@ -80,10 +80,24 @@ export const GameTable: React.FC<GameTableProps> = ({
   const mySeat = gameState.mySeatIndex;
   const isPassingPhase = gameState.phase === 'PASSING';
   const isTrickCollecting = gameState.currentTrick.cards.length === 4;
-  const isMyTurn =
-    gameState.phase === 'PLAYER_TURN' &&
-    gameState.currentTurnSeatIndex === mySeat &&
-    !isTrickCollecting;
+  const isTurnInPlay = gameState.phase === 'PLAYER_TURN' && !isTrickCollecting;
+  const isMyTurn = isTurnInPlay && gameState.currentTurnSeatIndex === mySeat;
+
+  // Rapid taps (or a tap racing the auto-play timer) must send only one action per turn.
+  // The lock expires when the server state moves on, or after 3s if the action was rejected.
+  const actionLockRef = useRef<{ key: string; at: number } | null>(null);
+  const acquireActionLock = (key: string): boolean => {
+    const lock = actionLockRef.current;
+    if (lock && lock.key === key && Date.now() - lock.at < 3000) return false;
+    actionLockRef.current = { key, at: Date.now() };
+    return true;
+  };
+  const turnKey = `play:${gameState.gameId}:${gameState.handNumber}:${gameState.currentTrickNumber}:${gameState.currentTrick.cards.length}`;
+  const playCardOnce = (cardId: string) => {
+    if (!acquireActionLock(turnKey)) return;
+    sounds.playCardThrow();
+    onPlayCard(cardId);
+  };
 
   const showPassedModal =
     Boolean(gameState.lastReceivedPassedCards) &&
@@ -98,6 +112,15 @@ export const GameTable: React.FC<GameTableProps> = ({
     setSelectedPassCardIds([]);
   }, [gameState.handNumber, gameState.phase]);
 
+  // Read at expiry, so state updates mid-turn don't restart the countdown
+  const autoPlayRef = useRef<() => void>(() => {});
+  autoPlayRef.current = () => {
+    // If it's my turn and timer reaches 0, automatically play a legal card
+    if (gameState.currentTurnSeatIndex === mySeat && gameState.legalPlayCardIds.length > 0 && !isTrickCollecting) {
+      playCardOnce(gameState.legalPlayCardIds[0]);
+    }
+  };
+
   // 20-second turn countdown timer for each player (starts AFTER 10s passed cards modal closes)
   useEffect(() => {
     if (gameState.phase !== 'PLAYER_TURN' || isTrickCollecting || showPassedModal) {
@@ -107,37 +130,20 @@ export const GameTable: React.FC<GameTableProps> = ({
       return;
     }
 
-    setTurnSecondsRemaining(20);
+    let remaining = 20;
+    setTurnSecondsRemaining(remaining);
 
     const interval = setInterval(() => {
-      setTurnSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          // If it's my turn and timer reaches 0, automatically play a legal card
-          if (gameState.currentTurnSeatIndex === mySeat && gameState.legalPlayCardIds.length > 0 && !isTrickCollecting) {
-            const autoCard = gameState.legalPlayCardIds[0];
-            sounds.playCardThrow();
-            onPlayCard(autoCard);
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
+      remaining -= 1;
+      setTurnSecondsRemaining(Math.max(0, remaining));
+      if (remaining <= 0) {
+        clearInterval(interval);
+        autoPlayRef.current();
+      }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [
-    gameState.phase,
-    gameState.currentTurnSeatIndex,
-    gameState.currentTrick.cards.length,
-    gameState.currentTrickNumber,
-    gameState.handNumber,
-    mySeat,
-    gameState.legalPlayCardIds,
-    onPlayCard,
-    isTrickCollecting,
-    showPassedModal,
-  ]);
+  }, [turnKey, gameState.phase, gameState.currentTurnSeatIndex, isTrickCollecting, showPassedModal]);
 
   // Relative seat mapping (Anti-Clockwise turn & deal rotation):
   // South (0 offset) -> You
@@ -187,21 +193,29 @@ export const GameTable: React.FC<GameTableProps> = ({
       }
     } else if (isMyTurn) {
       if (gameState.legalPlayCardIds.includes(card.id)) {
-        sounds.playCardThrow();
-        onPlayCard(card.id);
+        playCardOnce(card.id);
       }
     }
   };
 
   const handlePassSubmit = () => {
-    if (validSelectedPassIds.length === 5) {
+    if (validSelectedPassIds.length === 5 && acquireActionLock(`pass:${gameState.gameId}:${gameState.handNumber}`)) {
       onSubmitPass(validSelectedPassIds);
     }
   };
 
-  const handleAutoPass = () => {
-    onAutoPass();
+  // Stable identity: PassingPanel restarts its countdown whenever this callback changes
+  const autoPassRef = useRef<() => void>(() => {});
+  autoPassRef.current = () => {
+    if (acquireActionLock(`pass:${gameState.gameId}:${gameState.handNumber}`)) {
+      onAutoPass();
+    }
   };
+  const handleAutoPass = useCallback(() => autoPassRef.current(), []);
+
+  // Stable identity: PassedCardsModal restarts its 10s countdown whenever onClose changes
+  const passedHandNumber = gameState.lastReceivedPassedCards?.handNumber ?? null;
+  const handleClosePassed = useCallback(() => setDismissedPassHand(passedHandNumber), [passedHandNumber]);
 
   const toggleSound = () => {
     const next = !soundEnabled;
@@ -254,18 +268,18 @@ export const GameTable: React.FC<GameTableProps> = ({
     }[tableTheme] || 'bg-[#064E3B] border-[#043427]';
 
   return (
-    <div className="w-full h-screen h-[100dvh] bg-[#0F172A] flex flex-col justify-between font-sans text-slate-100 select-none overflow-hidden">
+    <div className="w-full flex-1 min-h-0 px-safe bg-[#0F172A] flex flex-col justify-between font-sans text-slate-100 select-none overflow-hidden">
       {/* Top Header Bar with notch safe area */}
-      <header className="h-12 xs:h-13 sm:h-16 bg-[#1E293B] border-b border-slate-700 flex items-center justify-between px-2 xs:px-3 sm:px-8 shrink-0 shadow-lg z-30 pt-safe">
+      <header className="box-content h-12 xs:h-13 sm:h-16 short:h-10 bg-[#1E293B] border-b border-slate-700 flex items-center justify-between px-2 xs:px-3 sm:px-8 shrink-0 shadow-lg z-30 pt-safe">
         <div className="flex items-center gap-2 xs:gap-3 sm:gap-4">
-          <div className="w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 bg-indigo-600 rounded-lg flex items-center justify-center font-bold text-sm xs:text-base sm:text-xl shadow-inner text-white">
+          <div className="hidden xs:flex w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 short:w-8 short:h-8 bg-indigo-600 rounded-lg items-center justify-center font-bold text-sm xs:text-base sm:text-xl shadow-inner text-white">
             BP
           </div>
           <div>
-            <h1 className="text-sm xs:text-base sm:text-xl font-bold tracking-tight text-white leading-tight">
+            <h1 className="text-sm xs:text-base sm:text-xl font-bold tracking-tight text-white leading-tight whitespace-nowrap">
               Begi Pakad
             </h1>
-            <p className="text-[10px] sm:text-[11px] text-slate-400">
+            <p className="hidden xs:block text-[10px] sm:text-[11px] text-slate-400 short:hidden">
               {gameState.roomId ? 'Multiplayer' : 'Single Player'}
             </p>
           </div>
@@ -358,13 +372,7 @@ export const GameTable: React.FC<GameTableProps> = ({
 
           <button
             type="button"
-            onClick={() => {
-              if (onReplaceWithBot || onExitAndEndGame) {
-                setShowExitConfirmModal(true);
-              } else {
-                onLeaveGame();
-              }
-            }}
+            onClick={() => setShowExitConfirmModal(true)}
             className="p-1.5 xs:p-2 rounded-lg sm:rounded-xl bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-300 border border-slate-700 hover:border-rose-700 transition"
             title="Exit Game"
           >
@@ -375,10 +383,10 @@ export const GameTable: React.FC<GameTableProps> = ({
 
       {/* Main Table Felt Stage */}
       <main
-        className={`flex-1 relative m-1 xs:m-1.5 sm:m-3 rounded-xl sm:rounded-3xl border xs:border-2 sm:border-8 ${themeFeltStyles} shadow-2xl flex flex-col justify-between p-1 xs:p-2 sm:p-4 overflow-hidden min-h-0`}
+        className={`flex-1 relative m-1 xs:m-1.5 sm:m-3 compact:sm:m-2 short:m-1 rounded-xl sm:rounded-3xl border xs:border-2 sm:border-8 compact:sm:border-4 short:border-2 ${themeFeltStyles} shadow-2xl flex flex-col justify-between p-1 xs:p-2 sm:p-4 compact:sm:p-2 short:p-1 overflow-hidden min-h-0`}
       >
         {/* Floating Desktop Live Scoreboard HUD */}
-        <div className="hidden xl:block absolute top-4 left-4 w-56 bg-slate-900/85 rounded-xl p-3.5 border border-slate-700 shadow-xl backdrop-blur-md z-20">
+        <div className="hidden xl:tall:block absolute top-4 left-4 w-56 bg-slate-900/85 rounded-xl p-3.5 border border-slate-700 shadow-xl backdrop-blur-md z-20">
           <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5 flex items-center justify-between">
             <span>Live Scoreboard</span>
             <span className="text-amber-400 font-mono">Ser {gameState.currentTrickNumber}/13</span>
@@ -429,9 +437,9 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
         </div>
 
-        {/* Floating Top-Right Lead Suit & Target Info */}
-        <div className="hidden sm:flex flex-col gap-1.5 absolute top-4 right-4 text-right z-20">
-          <div className="bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-wider text-slate-300 border border-white/10 flex items-center justify-end gap-1.5">
+        {/* Floating Top-Right: Lead Suit & Target Info + Taunt */}
+        <div className="absolute top-1.5 right-1.5 sm:top-4 sm:right-4 short:top-1 short:right-1 z-40 flex flex-col items-end gap-1.5 text-right">
+          <div className="hidden sm:flex compact:hidden bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-wider text-slate-300 border border-white/10 flex items-center justify-end gap-1.5">
             <span>Lead Suit:</span>
             {leadSuitInfo ? (
               <span className={`text-xs font-bold ${leadSuitInfo.isRed ? 'text-rose-500' : 'text-white'}`}>
@@ -441,122 +449,14 @@ export const GameTable: React.FC<GameTableProps> = ({
               <span className="text-slate-400 font-bold">Waiting</span>
             )}
           </div>
-          <div className="bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-wider text-slate-300 border border-white/10 flex items-center justify-end gap-1.5">
+          <div className="hidden sm:flex compact:hidden bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-wider text-slate-300 border border-white/10 items-center justify-end gap-1.5">
             <span>Target:</span>
             <span className="text-white text-xs font-black">Avoid 100</span>
           </div>
-        </div>
-
-        {/* NORTH SEAT (Player across / Teammate) */}
-        <div className="w-full flex justify-center z-20">
-          {northPlayer && (
-            <PlayerSeat
-              player={northPlayer}
-              isCurrentTurn={!isTrickCollecting && gameState.currentTurnSeatIndex === northPlayer.seatIndex}
-              isSelf={northPlayer.seatIndex === mySeat}
-              cardsCount={gameState.opponentCardCounts[northPlayer.seatIndex] ?? 13}
-              position="top"
-              turnSecondsRemaining={gameState.currentTurnSeatIndex === northPlayer.seatIndex ? turnSecondsRemaining : undefined}
-              isTrickWinner={isTrickCollecting && gameState.currentTrick.winnerSeatIndex === northPlayer.seatIndex}
-              activeToastMessage={activeToasts[northPlayer.seatIndex]}
-            />
-          )}
-        </div>
-
-        {/* MIDDLE ROW (West Player - Center Trick Arena - East Player) */}
-        <div className="w-full flex items-center justify-between gap-2 px-1 sm:px-6 z-10">
-          {/* WEST SEAT */}
-          <div className="flex flex-col justify-center">
-            {westPlayer && (
-              <PlayerSeat
-                player={westPlayer}
-                isCurrentTurn={!isTrickCollecting && gameState.currentTurnSeatIndex === westPlayer.seatIndex}
-                isSelf={westPlayer.seatIndex === mySeat}
-                cardsCount={gameState.opponentCardCounts[westPlayer.seatIndex] ?? 13}
-                position="left"
-                turnSecondsRemaining={gameState.currentTurnSeatIndex === westPlayer.seatIndex ? turnSecondsRemaining : undefined}
-                isTrickWinner={isTrickCollecting && gameState.currentTrick.winnerSeatIndex === westPlayer.seatIndex}
-                activeToastMessage={activeToasts[westPlayer.seatIndex]}
-              />
-            )}
-          </div>
-
-          {/* CENTER TRICK ARENA / PASSING PANEL */}
-          <div className="flex-1 flex flex-col items-center justify-center mx-2">
-            {isPassingPhase ? (
-              <PassingPanel
-                selectedCardIds={validSelectedPassIds}
-                targetRecipient={recipientPlayer}
-                hasSubmitted={gameState.passingState.hasSubmitted}
-                timeRemainingSeconds={gameState.passingState.timeRemainingSeconds}
-                onPassSubmit={handlePassSubmit}
-                onAutoSelect={handleAutoPass}
-                canReceivePaan={gameState.passingState.targetRecipientCanReceivePaan}
-                selectedCardsContainPaan={selectedCardsContainPaan}
-              />
-            ) : (
-              <TrickArea
-                currentTrick={gameState.currentTrick}
-                players={gameState.players}
-                mySeatIndex={mySeat}
-                lastActionMessage={gameState.lastActionMessage}
-                handNumber={gameState.handNumber}
-                currentTrickNumber={gameState.currentTrickNumber}
-              />
-            )}
-          </div>
-
-          {/* EAST SEAT */}
-          <div className="flex flex-col justify-center">
-            {eastPlayer && (
-              <PlayerSeat
-                player={eastPlayer}
-                isCurrentTurn={!isTrickCollecting && gameState.currentTurnSeatIndex === eastPlayer.seatIndex}
-                isSelf={eastPlayer.seatIndex === mySeat}
-                cardsCount={gameState.opponentCardCounts[eastPlayer.seatIndex] ?? 13}
-                position="right"
-                turnSecondsRemaining={gameState.currentTurnSeatIndex === eastPlayer.seatIndex ? turnSecondsRemaining : undefined}
-                isTrickWinner={isTrickCollecting && gameState.currentTrick.winnerSeatIndex === eastPlayer.seatIndex}
-                activeToastMessage={activeToasts[eastPlayer.seatIndex]}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* SOUTH SEAT (You) + Player Hand */}
-        <div className="w-full flex flex-col items-center z-20 gap-1">
-          {southPlayer && (
-            <PlayerSeat
-              player={southPlayer}
-              isCurrentTurn={!isTrickCollecting && gameState.currentTurnSeatIndex === southPlayer.seatIndex}
-              isSelf={true}
-              cardsCount={gameState.myHand.length}
-              position="bottom"
-              className="mb-1"
-              turnSecondsRemaining={gameState.currentTurnSeatIndex === southPlayer.seatIndex ? turnSecondsRemaining : undefined}
-              isTrickWinner={isTrickCollecting && gameState.currentTrick.winnerSeatIndex === southPlayer.seatIndex}
-              activeToastMessage={activeToasts[southPlayer.seatIndex]}
-            />
-          )}
-
-          {/* Player Hand */}
-          <CardHand
-            cards={gameState.myHand}
-            selectedCardIds={validSelectedPassIds}
-            legalPlayCardIds={gameState.legalPlayCardIds}
-            isMyTurn={isMyTurn}
-            isPassingPhase={isPassingPhase}
-            turnSecondsRemaining={isMyTurn ? turnSecondsRemaining : undefined}
-            onCardClick={handleHandCardClick}
-          />
-        </div>
-
-        {/* Floating Bottom-Right Taunt Button */}
-        <div className="absolute bottom-2.5 right-2.5 sm:bottom-5 sm:right-5 z-40">
           <div className="relative">
-            {/* Quick Messages Popup Menu (Opens Upward) */}
+            {/* Quick Messages Popup Menu (opens downward) */}
             {showQuickMsgMenu && (
-              <div className="absolute right-0 bottom-full mb-2.5 z-50 w-44 bg-slate-900/95 border border-slate-700 rounded-2xl p-2 shadow-2xl space-y-1 backdrop-blur-md animate-in fade-in zoom-in-95">
+              <div className="absolute right-0 top-full mt-2 z-50 w-44 bg-slate-900/95 border border-slate-700 rounded-2xl p-2 shadow-2xl space-y-1 backdrop-blur-md animate-in fade-in zoom-in-95">
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1 border-b border-slate-800">
                   Send Quick Taunt
                 </div>
@@ -585,10 +485,117 @@ export const GameTable: React.FC<GameTableProps> = ({
             </button>
           </div>
         </div>
+
+        {/* NORTH SEAT (Player across / Teammate) */}
+        <div className="w-full shrink-0 flex justify-center z-20">
+          {northPlayer && (
+            <PlayerSeat
+              player={northPlayer}
+              isCurrentTurn={isTurnInPlay && gameState.currentTurnSeatIndex === northPlayer.seatIndex}
+              isSelf={northPlayer.seatIndex === mySeat}
+              cardsCount={gameState.opponentCardCounts[northPlayer.seatIndex] ?? 13}
+              position="top"
+              turnSecondsRemaining={isTurnInPlay && gameState.currentTurnSeatIndex === northPlayer.seatIndex ? turnSecondsRemaining : undefined}
+              isTrickWinner={isTrickCollecting && gameState.currentTrick.winnerSeatIndex === northPlayer.seatIndex}
+              activeToastMessage={activeToasts[northPlayer.seatIndex]}
+            />
+          )}
+        </div>
+
+        {/* MIDDLE ROW (West Player - Center Trick Arena - East Player) */}
+        <div className="w-full flex-1 min-h-0 flex items-center justify-between gap-1 sm:gap-2 px-0.5 sm:px-6 z-10">
+          {/* WEST SEAT */}
+          <div className="flex flex-col justify-center">
+            {westPlayer && (
+              <PlayerSeat
+                player={westPlayer}
+                isCurrentTurn={isTurnInPlay && gameState.currentTurnSeatIndex === westPlayer.seatIndex}
+                isSelf={westPlayer.seatIndex === mySeat}
+                cardsCount={gameState.opponentCardCounts[westPlayer.seatIndex] ?? 13}
+                position="left"
+                turnSecondsRemaining={isTurnInPlay && gameState.currentTurnSeatIndex === westPlayer.seatIndex ? turnSecondsRemaining : undefined}
+                isTrickWinner={isTrickCollecting && gameState.currentTrick.winnerSeatIndex === westPlayer.seatIndex}
+                activeToastMessage={activeToasts[westPlayer.seatIndex]}
+              />
+            )}
+          </div>
+
+          {/* CENTER TRICK ARENA / PASSING PANEL */}
+          <div className="flex-1 min-w-0 h-full flex flex-col items-center justify-center mx-0.5 sm:mx-2">
+            {isPassingPhase ? (
+              <PassingPanel
+                selectedCardIds={validSelectedPassIds}
+                targetRecipient={recipientPlayer}
+                hasSubmitted={gameState.passingState.hasSubmitted}
+                timeRemainingSeconds={gameState.passingState.timeRemainingSeconds}
+                onPassSubmit={handlePassSubmit}
+                onAutoSelect={handleAutoPass}
+                canReceivePaan={gameState.passingState.targetRecipientCanReceivePaan}
+                selectedCardsContainPaan={selectedCardsContainPaan}
+              />
+            ) : (
+              <TrickArea
+                currentTrick={gameState.currentTrick}
+                players={gameState.players}
+                mySeatIndex={mySeat}
+                lastActionMessage={gameState.lastActionMessage}
+                handNumber={gameState.handNumber}
+                currentTrickNumber={gameState.currentTrickNumber}
+              />
+            )}
+          </div>
+
+          {/* EAST SEAT */}
+          <div className="flex flex-col justify-center">
+            {eastPlayer && (
+              <PlayerSeat
+                player={eastPlayer}
+                isCurrentTurn={isTurnInPlay && gameState.currentTurnSeatIndex === eastPlayer.seatIndex}
+                isSelf={eastPlayer.seatIndex === mySeat}
+                cardsCount={gameState.opponentCardCounts[eastPlayer.seatIndex] ?? 13}
+                position="right"
+                turnSecondsRemaining={isTurnInPlay && gameState.currentTurnSeatIndex === eastPlayer.seatIndex ? turnSecondsRemaining : undefined}
+                isTrickWinner={isTrickCollecting && gameState.currentTrick.winnerSeatIndex === eastPlayer.seatIndex}
+                activeToastMessage={activeToasts[eastPlayer.seatIndex]}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* SOUTH SEAT (You) + Player Hand */}
+        <div className="w-full shrink-0 flex flex-col items-center z-20 gap-1 compact:flex-row compact:items-end compact:justify-center compact:gap-3">
+          {southPlayer && (
+            <PlayerSeat
+              player={southPlayer}
+              isCurrentTurn={isTurnInPlay && gameState.currentTurnSeatIndex === southPlayer.seatIndex}
+              isSelf={true}
+              cardsCount={gameState.myHand.length}
+              position="bottom"
+              className="mb-1 compact:mb-3 compact:shrink-0"
+              turnSecondsRemaining={isTurnInPlay && gameState.currentTurnSeatIndex === southPlayer.seatIndex ? turnSecondsRemaining : undefined}
+              isTrickWinner={isTrickCollecting && gameState.currentTrick.winnerSeatIndex === southPlayer.seatIndex}
+              activeToastMessage={activeToasts[southPlayer.seatIndex]}
+            />
+          )}
+
+          {/* Player Hand */}
+          <div className="w-full min-w-0 compact:w-auto">
+          <CardHand
+            cards={gameState.myHand}
+            selectedCardIds={validSelectedPassIds}
+            legalPlayCardIds={gameState.legalPlayCardIds}
+            isMyTurn={isMyTurn}
+            isPassingPhase={isPassingPhase}
+            turnSecondsRemaining={isMyTurn ? turnSecondsRemaining : undefined}
+            onCardClick={handleHandCardClick}
+          />
+          </div>
+        </div>
+
       </main>
 
       {/* Footer Bar */}
-      <footer className="h-8 sm:h-11 border-t border-slate-800 flex items-center justify-between px-3 sm:px-8 text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-400 shrink-0 bg-[#0F172A] pb-safe">
+      <footer className="box-content h-8 sm:h-11 compact:hidden border-t border-slate-800 flex items-center justify-between px-3 sm:px-8 text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-400 shrink-0 bg-[#0F172A] pb-safe">
         <div>© 2026 Begi Pakad</div>
         <div className="flex gap-4 sm:gap-6 font-semibold">
           <button
@@ -614,7 +621,7 @@ export const GameTable: React.FC<GameTableProps> = ({
           isOpen={true}
           cards={gameState.lastReceivedPassedCards.cards}
           fromPlayer={passedFromPlayer}
-          onClose={() => setDismissedPassHand(gameState.lastReceivedPassedCards!.handNumber)}
+          onClose={handleClosePassed}
           autoCloseSeconds={10}
         />
       )}
@@ -622,11 +629,13 @@ export const GameTable: React.FC<GameTableProps> = ({
       {/* Full Scoreboard Modal Drawer */}
       {showScoreDrawer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="relative w-full max-w-xl">
+          <div className="relative w-full max-w-xl max-h-full overflow-y-auto no-scrollbar">
             <ScoreBoard
               players={gameState.players}
+              handHistory={gameState.handHistory}
               currentHand={gameState.handNumber}
               currentTrickNumber={gameState.currentTrickNumber}
+              mySeatIndex={mySeat}
             />
             <button
               type="button"
@@ -646,11 +655,27 @@ export const GameTable: React.FC<GameTableProps> = ({
             <div>
               <h3 className="text-lg font-bold text-white">Leave Match?</h3>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                Choose how you want to exit the current online match.
+                {onReplaceWithBot || onExitAndEndGame
+                  ? 'Choose how you want to exit the current online match.'
+                  : 'Your progress in this game will be lost.'}
               </p>
             </div>
 
             <div className="space-y-2.5 pt-1">
+              {!onReplaceWithBot && !onExitAndEndGame && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExitConfirmModal(false);
+                    onLeaveGame();
+                  }}
+                  className="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex flex-col items-start transition shadow-md"
+                >
+                  <span>Quit to Menu</span>
+                  <span className="text-[10px] text-rose-200 font-normal">Ends this game</span>
+                </button>
+              )}
+
               {onReplaceWithBot && (
                 <button
                   type="button"

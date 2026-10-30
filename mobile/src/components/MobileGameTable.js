@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ScrollView } from 'react-native';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getSocket } from '../networking/socket.js';
 import PlayerSeat from './PlayerSeat.js';
 import CardHand from './CardHand.js';
@@ -27,7 +28,40 @@ export default function MobileGameTable({ gameState, onPlayCard, onSubmitPass, o
   const isTrickFull = gameState.currentTrick.cards.length === 4;
   const isMyTurn = gameState.phase === 'PLAYER_TURN' && gameState.currentTurnSeatIndex === mySeat && !isTrickFull;
 
+  // Rapid taps (or a tap racing the auto-play timer) must send only one action per turn.
+  // The lock expires when the server state moves on, or after 3s if the action was rejected.
+  const actionLock = useRef(null);
+  const acquireActionLock = (key) => {
+    const lock = actionLock.current;
+    if (lock && lock.key === key && Date.now() - lock.at < 3000) return false;
+    actionLock.current = { key, at: Date.now() };
+    return true;
+  };
+  const turnKey = `play:${gameState.gameId}:${gameState.handNumber}:${gameState.currentTrickNumber}:${gameState.currentTrick.cards.length}`;
+  const passKey = `pass:${gameState.gameId}:${gameState.handNumber}`;
+  const playCardOnce = (cardId) => { if (acquireActionLock(turnKey)) onPlayCard(cardId); };
+  // Stable identity: PassingPanel restarts its countdown whenever this callback changes
+  const autoPassRef = useRef(null);
+  autoPassRef.current = () => { if (acquireActionLock(passKey)) onAutoPass(); };
+  const handleAutoSelect = useCallback(() => autoPassRef.current(), []);
+  // Stable identity: PassedCardsModal restarts its 10s countdown whenever onClose changes
+  const passedHandNumber = gameState.lastReceivedPassedCards?.handNumber;
+  const handleClosePassed = useCallback(() => setDismissedPassHand(passedHandNumber), [passedHandNumber]);
+  const nextRoundSeat = gameState.nextRoundSeatIndex ?? 0;
+
   const showPassedModal = Boolean(gameState.lastReceivedPassedCards) && gameState.lastReceivedPassedCards?.handNumber !== dismissedPassHand;
+
+  // iOS presents only one RN Modal at a time (a second one may never appear), so render
+  // just the most important one. Game events also dismiss the score / exit sheets.
+  const topModal = showGameOver ? 'gameOver'
+    : roundSummary ? 'round'
+    : showPassedModal && gameState.lastReceivedPassedCards ? 'passed'
+    : showExit ? 'exit'
+    : showScore ? 'score'
+    : null;
+  useEffect(() => {
+    if (showGameOver || roundSummary) { setShowScore(false); setShowExit(false); }
+  }, [showGameOver, roundSummary]);
   const passedFromPlayer = gameState.lastReceivedPassedCards ? gameState.players.find(p => p.seatIndex === gameState.lastReceivedPassedCards.fromSeatIndex) : null;
 
   // Reset pass selection on new hand/phase
@@ -38,6 +72,9 @@ export default function MobileGameTable({ gameState, onPlayCard, onSubmitPass, o
     if (gameState.phase === 'HAND_COMPLETE' && prevPhase.current !== 'HAND_COMPLETE') {
       const last = gameState.handHistory[gameState.handHistory.length - 1];
       if (last) setRoundSummary(last);
+    } else if (gameState.phase !== 'HAND_COMPLETE') {
+      // Next round started (by whoever controls it): close the recap for everyone
+      setRoundSummary(null);
     }
     if (gameState.phase === 'GAME_COMPLETE') setShowGameOver(true);
     prevPhase.current = gameState.phase;
@@ -51,7 +88,7 @@ export default function MobileGameTable({ gameState, onPlayCard, onSubmitPass, o
     }
     setTurnSecs(20);
     const iv = setInterval(() => setTurnSecs(p => {
-      if (p <= 1) { clearInterval(iv); if (isMyTurn && gameState.legalPlayCardIds.length > 0) onPlayCard(gameState.legalPlayCardIds[0]); return 0; }
+      if (p <= 1) { clearInterval(iv); if (isMyTurn && gameState.legalPlayCardIds.length > 0) playCardOnce(gameState.legalPlayCardIds[0]); return 0; }
       return p - 1;
     }), 1000);
     return () => clearInterval(iv);
@@ -84,7 +121,7 @@ export default function MobileGameTable({ gameState, onPlayCard, onSubmitPass, o
       if (validPassIds.includes(card.id)) setSelectedPassIds(p => p.filter(id => id !== card.id));
       else if (validPassIds.length < 5) setSelectedPassIds(p => [...p.filter(id => gameState.myHand.some(c => c.id === id)), card.id]);
     } else if (isMyTurn && gameState.legalPlayCardIds.includes(card.id)) {
-      onPlayCard(card.id);
+      playCardOnce(card.id);
     }
   };
 
@@ -155,8 +192,8 @@ export default function MobileGameTable({ gameState, onPlayCard, onSubmitPass, o
                 targetRecipient={recipientPlayer}
                 hasSubmitted={gameState.passingState.hasSubmitted}
                 timeRemainingSeconds={gameState.passingState.timeRemainingSeconds}
-                onPassSubmit={() => validPassIds.length === 5 && onSubmitPass(validPassIds)}
-                onAutoSelect={onAutoPass}
+                onPassSubmit={() => validPassIds.length === 5 && acquireActionLock(passKey) && onSubmitPass(validPassIds)}
+                onAutoSelect={handleAutoSelect}
                 canReceivePaan={gameState.passingState.targetRecipientCanReceivePaan}
                 selectedCardsContainPaan={hasPaanInPass}
               />
@@ -209,30 +246,30 @@ export default function MobileGameTable({ gameState, onPlayCard, onSubmitPass, o
       </View>
 
       {/* ── MODALS ── */}
-      {showPassedModal && gameState.lastReceivedPassedCards && (
+      {topModal === 'passed' && (
         <PassedCardsModal
           isOpen={true}
           cards={gameState.lastReceivedPassedCards.cards}
           fromPlayer={passedFromPlayer}
-          onClose={() => setDismissedPassHand(gameState.lastReceivedPassedCards.handNumber)}
+          onClose={handleClosePassed}
           autoCloseSeconds={10}
         />
       )}
-      <ScoreModal isOpen={showScore} players={gameState.players} handNumber={gameState.handNumber} trickNumber={gameState.currentTrickNumber} onClose={() => setShowScore(false)} />
+      <ScoreModal isOpen={topModal === 'score'} players={gameState.players} handHistory={gameState.handHistory} handNumber={gameState.handNumber} trickNumber={gameState.currentTrickNumber} mySeatIndex={mySeat} onClose={() => setShowScore(false)} />
       <RoundSummaryModal
-        isOpen={Boolean(roundSummary)}
+        isOpen={topModal === 'round'}
         handResult={roundSummary}
         players={gameState.players}
-        isHost={gameState.mySeatIndex === 0}
-        hostName={gameState.players.find(p => p.seatIndex === 0)?.name || 'Host'}
+        isHost={mySeat === nextRoundSeat}
+        hostName={gameState.players.find(p => p.seatIndex === nextRoundSeat)?.name || 'Host'}
         onContinue={() => {
           const socket = getSocket(serverUrl);
           socket.emit('game:nextRound');
           setRoundSummary(null);
         }}
       />
-      <GameOverModal isOpen={showGameOver} winnerTeam={gameState.winnerTeam} players={gameState.players} myTeamId={mySeat % 2 === 0 ? 1 : 2} onPlayAgain={() => { setShowGameOver(false); onLeaveGame(); }} onExitToMenu={onLeaveGame} />
-      <ExitConfirmModal isOpen={showExit} isHost={isHost} onReplaceBot={onReplaceWithBot ? () => { setShowExit(false); onReplaceWithBot(); onLeaveGame(); } : null} onExitEnd={onExitAndEndGame ? () => { setShowExit(false); onExitAndEndGame(); onLeaveGame(); } : null} onHostEnd={isHost && onHostEndGame ? () => { setShowExit(false); onHostEndGame(); onLeaveGame(); } : null} onLeave={onLeaveGame} onCancel={() => setShowExit(false)} />
+      <GameOverModal isOpen={topModal === 'gameOver'} winnerTeam={gameState.winnerTeam} players={gameState.players} handHistory={gameState.handHistory} myTeamId={mySeat % 2 === 0 ? 1 : 2} onExitToMenu={() => { setShowGameOver(false); onLeaveGame(); }} />
+      <ExitConfirmModal isOpen={topModal === 'exit'} isHost={isHost} onReplaceBot={onReplaceWithBot ? () => { setShowExit(false); onReplaceWithBot(); onLeaveGame(); } : null} onExitEnd={onExitAndEndGame ? () => { setShowExit(false); onExitAndEndGame(); onLeaveGame(); } : null} onHostEnd={isHost && onHostEndGame ? () => { setShowExit(false); onHostEndGame(); onLeaveGame(); } : null} onLeave={onLeaveGame} onCancel={() => setShowExit(false)} />
     </SafeAreaView>
   );
 }

@@ -39,7 +39,7 @@ export const CardHand: React.FC<CardHandProps> = ({
   return (
     <div className="w-full flex flex-col items-center select-none">
       {/* Hand status & Turn Banner */}
-      <div className="mb-1.5 xs:mb-2 flex items-center justify-center gap-2">
+      <div className="mb-1.5 xs:mb-2 short:mb-0.5 flex items-center justify-center gap-2">
         {isPassingPhase ? (
           <div className="bg-indigo-600/95 text-white px-3.5 xs:px-5 py-1 xs:py-1.5 rounded-full font-bold shadow-lg border border-indigo-400 text-[11px] xs:text-xs tracking-wide uppercase flex items-center gap-1.5 xs:gap-2">
             <span>Select 5 Cards to Pass</span>
@@ -49,7 +49,7 @@ export const CardHand: React.FC<CardHandProps> = ({
           </div>
         ) : isMyTurn ? (
           <div
-            className={`px-4 xs:px-6 py-1 xs:py-1.5 sm:py-2 rounded-full font-bold shadow-xl border text-[11px] xs:text-xs sm:text-sm tracking-wider uppercase flex items-center gap-2 transition-all
+            className={`px-4 xs:px-6 py-1 xs:py-1.5 sm:py-2 short:py-0.5 rounded-full font-bold shadow-xl border text-[11px] xs:text-xs sm:text-sm tracking-wider uppercase flex items-center gap-2 transition-all
               ${
                 isLowTime
                   ? 'bg-rose-600 border-rose-400 text-white animate-pulse shadow-rose-600/40 ring-4 ring-rose-500/30'
@@ -76,7 +76,7 @@ export const CardHand: React.FC<CardHandProps> = ({
       </div>
 
       {/* Cards container with responsive touch scrolling & clear bounds */}
-      <div className="w-full max-w-full sm:max-w-4xl md:max-w-5xl overflow-x-auto overflow-y-visible touch-scroll no-scrollbar pt-3 xs:pt-4 sm:pt-6 pb-1 xs:pb-2 px-1 xs:px-2 sm:px-6 flex justify-start sm:justify-center">
+      <div className="w-full max-w-full sm:max-w-4xl md:max-w-5xl overflow-x-auto overflow-y-visible touch-scroll no-scrollbar pt-3 xs:pt-4 sm:pt-6 short:pt-3 pb-1 xs:pb-2 short:pb-0.5 px-1 xs:px-2 sm:px-6 flex justify-start sm:justify-center">
         <div className="min-w-fit mx-auto flex items-end -space-x-3.5 xs:-space-x-4 sm:-space-x-5 md:-space-x-6 px-4 xs:px-6 sm:px-10">
           {cards.map((card, index) => {
             const isSelected = selectedSet.has(card.id);

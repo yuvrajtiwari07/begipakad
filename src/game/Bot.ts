@@ -163,7 +163,7 @@ export class BotAI {
     const currentWinnerIsTeammate = currentWinningCard.seatIndex === teammateSeat;
     const trickHasPoints = currentTrick.cards.some((p) => p.card.isPaan || p.card.isBegumHukum);
 
-    // If my score >= 75, Q♠ gives 0 pts to me
+    // If I started this round at 75+, Q♠ gives 0 pts to me (callers pass the round-start score)
     const isQSafeForMe = myScore >= 75;
 
     // Separate cards below current winning rank and above

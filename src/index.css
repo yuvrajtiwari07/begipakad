@@ -1,5 +1,49 @@
 @import "tailwindcss";
 
+/* xs: is used across the UI (phone sizing) but isn't a Tailwind default breakpoint.
+   400px keeps the smallest phones on the base sizes and bumps larger phones up. */
+@theme {
+  --breakpoint-xs: 25rem;
+}
+
+/* Height-based variants: the game table must fit phones in landscape (~360-430px tall)
+   and laptop windows (~600-800px tall), not just tall portrait screens. */
+@custom-variant short (@media (max-height: 560px));
+@custom-variant compact (@media (max-height: 820px) and (orientation: landscape));
+@custom-variant tall (@media (min-height: 900px));
+
+/* Minimal stand-in for the tw-animate-css enter utilities used by modals, toasts and
+   the dealt hand (animate-in + fade-in / zoom-in-95 / slide-in-from-*). */
+@keyframes enter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(0, var(--tw-enter-translate-y, 0), 0) scale(var(--tw-enter-scale, 1));
+  }
+}
+@utility animate-in {
+  animation: enter var(--tw-duration, 200ms) ease-out;
+}
+@utility fade-in {
+  --tw-enter-opacity: 0;
+}
+@utility zoom-in-95 {
+  --tw-enter-scale: 0.95;
+}
+@utility slide-in-from-top {
+  --tw-enter-translate-y: -100%;
+}
+@utility slide-in-from-bottom {
+  --tw-enter-translate-y: 100%;
+}
+@utility slide-in-from-bottom-6 {
+  --tw-enter-translate-y: calc(var(--spacing) * 6);
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-in {
+    animation: none;
+  }
+}
+
 @layer utilities {
   /* Hide scrollbar for Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {

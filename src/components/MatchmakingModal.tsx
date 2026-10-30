@@ -18,7 +18,7 @@ export const MatchmakingModal: React.FC<MatchmakingModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-in fade-in font-sans">
-      <div className="relative w-full max-w-sm bg-[#1E293B] border border-slate-700 rounded-3xl p-6 sm:p-7 shadow-2xl flex flex-col items-center text-center gap-5 text-slate-100">
+      <div className="relative w-full max-w-sm max-h-full overflow-y-auto no-scrollbar bg-[#1E293B] border border-slate-700 rounded-3xl p-6 sm:p-7 shadow-2xl flex flex-col items-center text-center gap-5 text-slate-100">
         {/* Pulsing Matchmaking Radar Icon */}
         <div className="relative my-2">
           <div className="w-20 h-20 rounded-full bg-indigo-600/10 border border-indigo-500/30 flex items-center justify-center animate-pulse">

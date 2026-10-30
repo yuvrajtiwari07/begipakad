@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card as CardType, Player } from '../game/types';
 import { getScoreZone } from '../game/scoring';
 import { Clock, Send, Sparkles, AlertTriangle } from 'lucide-react';
@@ -26,14 +26,18 @@ export const PassingPanel: React.FC<PassingPanelProps> = ({
   selectedCardsContainPaan,
 }) => {
   const [timeLeft, setTimeLeft] = useState(timeRemainingSeconds);
+  // Read through a ref: submitting must not restart the countdown
+  const hasSubmittedRef = useRef(hasSubmitted);
+  hasSubmittedRef.current = hasSubmitted;
 
+  // timeRemainingSeconds comes from the server's deadline, so each update re-syncs the countdown
   useEffect(() => {
     setTimeLeft(timeRemainingSeconds);
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          if (!hasSubmitted && onAutoSelect) {
+          if (!hasSubmittedRef.current && onAutoSelect) {
             onAutoSelect();
           }
           return 0;
@@ -42,7 +46,7 @@ export const PassingPanel: React.FC<PassingPanelProps> = ({
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [timeRemainingSeconds, hasSubmitted, onAutoSelect]);
+  }, [timeRemainingSeconds, onAutoSelect]);
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
@@ -111,7 +115,7 @@ export const PassingPanel: React.FC<PassingPanelProps> = ({
               onClick={onAutoSelect}
               className="text-[10px] sm:text-xs px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 font-medium transition whitespace-nowrap"
             >
-              Auto-Select
+              Auto-Pass
             </button>
           )}
 

@@ -66,7 +66,7 @@ export const PassedCardsModal: React.FC<PassedCardsModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-          className="relative w-full max-w-lg bg-[#1E293B] border-2 border-indigo-500/40 rounded-3xl shadow-2xl overflow-hidden text-slate-100"
+          className="relative w-full max-w-lg max-h-full overflow-y-auto no-scrollbar bg-[#1E293B] border-2 border-indigo-500/40 rounded-3xl shadow-2xl text-slate-100"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700 bg-[#0F172A]">

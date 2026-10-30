@@ -110,7 +110,7 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose 
                     Begum Hukum (Q♠) = 12 Points
                   </div>
                   <p className="text-xs text-slate-300">
-                    The dangerous Queen of Spades gives <strong>+12 points</strong> to whoever collects it, as long as their score is below 75!
+                    The dangerous Queen of Spades gives <strong>+12 points</strong> to whoever collects it, unless they already had 75+ points when the round started.
                   </p>
                 </div>
 
@@ -134,7 +134,7 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose 
                   </div>
                   <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900 border border-slate-700">
                     <span className="font-bold text-amber-400 shrink-0">75 – 89:</span>
-                    <span><strong>⚠️ 75-Point Rule:</strong> Q♠ gives <strong>+0 points</strong> to this player! Paan still gives +1.</span>
+                    <span><strong>⚠️ 75-Point Rule:</strong> if you start a round at 75+, Q♠ gives you <strong>+0 points</strong> for that whole round. Reaching 75 during a round doesn't count until the next one. Paan still gives +1.</span>
                   </div>
                   <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900 border border-slate-700">
                     <span className="font-bold text-rose-400 shrink-0">90 – 99:</span>
@@ -154,7 +154,7 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose 
               <div className="p-4 rounded-2xl bg-[#0F172A] border border-slate-700">
                 <h4 className="font-bold text-white text-sm sm:text-base mb-1.5">5-Card Simultaneous Passing</h4>
                 <p className="text-xs text-slate-300">
-                  Before the first Ser of each hand, every player selects exactly <strong>5 cards</strong> from their 13 cards to pass clockwise:
+                  Before the first Ser of each hand, every player selects exactly <strong>5 cards</strong> from their 13 cards to pass to the next player (on your right):
                 </p>
                 <div className="flex items-center justify-around py-2.5 my-2.5 bg-slate-900 rounded-xl text-xs font-mono font-bold text-indigo-300 border border-slate-700">
                   <span>P1 → P2</span>

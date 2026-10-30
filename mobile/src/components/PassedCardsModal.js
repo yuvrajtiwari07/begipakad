@@ -43,7 +43,7 @@ export default function PassedCardsModal({ isOpen, cards, fromPlayer, onClose, a
   const paanCount = cards.filter((c) => c.isPaan).length;
 
   return (
-    <Modal visible transparent animationType="fade">
+    <Modal visible transparent animationType="fade" supportedOrientations={['portrait', 'landscape']} onRequestClose={onClose}>
       <View style={s.overlay}>
         <View style={s.box}>
           {/* Header */}

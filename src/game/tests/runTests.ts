@@ -204,6 +204,124 @@ function runAllTests() {
     'Trick 1 fallback: Hearts takes priority over Q♠ when no other Spade exists',
   );
 
+  // Test 15: A completed trick (4 cards) cannot accept a 5th card while it is being collected
+  const enginePlayers: Player[] = [0, 1, 2, 3].map((s) => ({
+    id: `p${s}`,
+    name: `P${s}`,
+    avatarSeed: `a${s}`,
+    seatIndex: s,
+    teamId: s % 2 === 0 ? 1 : 2,
+    isBot: false,
+    isConnected: true,
+    score: 0,
+    tricksWonThisHand: 0,
+    cardsRemaining: 13,
+  }));
+  const engine = new GameEngine(enginePlayers);
+  engine.autoPassRemainingPlayers();
+  let lastSeat = -1;
+  for (let i = 0; i < 4; i++) {
+    const st = engine.getState();
+    lastSeat = st.currentTurnSeatIndex;
+    const legal = getLegalCardsToPlay(st.playerHands[lastSeat], st.currentTrick);
+    assert(engine.playCard(lastSeat, legal[0].id).success, `Trick card ${i + 1} accepted`);
+  }
+  const collecting = engine.getState();
+  const extraCard = getLegalCardsToPlay(collecting.playerHands[lastSeat], collecting.currentTrick)[0]
+    ?? collecting.playerHands[lastSeat][0];
+  const doubleTap = engine.playCard(lastSeat, extraCard.id);
+  assert(!doubleTap.success, 'Double tap on the 4th card of a trick is rejected');
+  assert(engine.getState().currentTrick.cards.length === 4, 'Completed trick still has exactly 4 cards');
+  assert(engine.getState().playerHands[lastSeat].length === 12, 'Double-tapping player keeps the rest of their hand');
+
+  engine.finalizeCompletedTrick();
+  const trickNumberAfterFinalize = engine.getState().currentTrickNumber;
+  engine.finalizeCompletedTrick();
+  assert(
+    engine.getState().currentTrickNumber === trickNumberAfterFinalize && engine.getState().trickHistory.length === 1,
+    'Finalizing the same trick twice is a no-op',
+  );
+
+  // Puts an engine at the end of a trick (4 cards on the table, seat 0 winning it)
+  const engineAtTrickEnd = (startScores: number[], trickNumber: number, tricksWon: number[]) => {
+    const e = new GameEngine(enginePlayers.map((p) => ({ ...p, score: startScores[p.seatIndex] })));
+    e.autoPassRemainingPlayers();
+    const st = e.getState();
+    st.currentTrickNumber = trickNumber;
+    st.currentTrick = {
+      trickNumber,
+      leadSuit: 'CHIDI',
+      leaderSeatIndex: 0,
+      winnerSeatIndex: 0,
+      cards: [0, 1, 2, 3].map((s) => ({ playerId: `p${s}`, seatIndex: s, card: createCard('CHIDI', '2') })),
+    };
+    st.players.forEach((p) => { p.tricksWonThisHand = tricksWon[p.seatIndex]; });
+    return e;
+  };
+
+  // Test 16: Game ending on the 13th Ser still applies the Zero-Ser -5 and records the round
+  const lastSerEngine = engineAtTrickEnd([88, 20, 40, 60], 13, [5, 0, 4, 4]);
+  lastSerEngine.getState().players[0].score = 101; // seat 0 crosses 100 on the final Ser
+  const lastSerResult = lastSerEngine.finalizeCompletedTrick();
+  const lastSerState = lastSerEngine.getState();
+  assert(lastSerResult.isGameOver === true && lastSerState.phase === 'GAME_COMPLETE', 'Game ends when 100 is reached on the 13th Ser');
+  assert(lastSerState.players[1].score === 15, 'Zero-Ser player gets -5 even when the game ends on the 13th Ser');
+  assert(
+    lastSerState.handHistory.length === 1 && lastSerState.handHistory[0].zeroTrickBonusAwarded[1] === true,
+    'Final round is recorded with its Zero-Ser bonus',
+  );
+
+  // Test 17: Zero-Ser bonus can take a score below 0
+  const negativeEngine = engineAtTrickEnd([0, 3, 30, 30], 13, [6, 0, 4, 3]);
+  negativeEngine.finalizeCompletedTrick();
+  const negativeHand = negativeEngine.getState().handHistory[0];
+  assert(negativeEngine.getState().players[1].score === -2, 'Zero-Ser takes a score of 3 to -2');
+  assert(
+    negativeHand.finalScores[1] - negativeHand.startScores[1] === -5,
+    'Round change for a Zero-Ser player is -5, not 0',
+  );
+
+  // Test 18: Game ending mid-round records the partial round so the scorecard adds up
+  const midRoundEngine = engineAtTrickEnd([95, 10, 20, 30], 7, [3, 0, 2, 1]);
+  midRoundEngine.getState().players[0].score = 100;
+  midRoundEngine.finalizeCompletedTrick();
+  const midState = midRoundEngine.getState();
+  const partialHand = midState.handHistory[0];
+  assert(midState.phase === 'GAME_COMPLETE' && midState.handHistory.length === 1, 'Mid-round game end records the round');
+  assert(
+    partialHand.isPartial === true && partialHand.zeroTrickBonusAwarded[1] === false && midState.players[1].score === 10,
+    'No Zero-Ser bonus for an unfinished round',
+  );
+  assert(
+    [0, 1, 2, 3].every((s) => partialHand.finalScores[s] === midState.players[s].score),
+    'Recorded round totals match final scores',
+  );
+
+  // Test 19: 75-point rule uses the score at the START of the round, not the score mid-round
+  const qTrick: Card[] = [createCard('HUKUM', 'K'), createCard('HUKUM', 'Q'), createCard('HUKUM', '2'), createCard('HUKUM', '3')];
+  assert(
+    calculateTrickPoints(qTrick, 0, 80, 70).begumPoints === 12,
+    'Q♠ gives +12 when the player crossed 75 during the round (started it at 70)',
+  );
+  assert(
+    calculateTrickPoints(qTrick, 0, 76, 76).begumPoints === 0,
+    'Q♠ gives +0 when the player had 75+ at the start of the round',
+  );
+
+  // Same rule through the engine: seat 0 starts the round at 70, is on 80 mid-round, then takes Q♠
+  const qEngine = new GameEngine(enginePlayers.map((p) => ({ ...p, score: p.seatIndex === 0 ? 70 : 0 })));
+  qEngine.autoPassRemainingPlayers();
+  const qState = qEngine.getState();
+  qState.players[0].score = 80;
+  qState.currentTrickNumber = 2;
+  qState.currentTrick = { trickNumber: 2, leadSuit: null, leaderSeatIndex: 0, cards: [] };
+  qState.currentTurnSeatIndex = 0;
+  qState.playerHands = { 0: [createCard('HUKUM', 'K')], 1: [createCard('HUKUM', 'Q')], 2: [createCard('HUKUM', '2')], 3: [createCard('HUKUM', '3')] };
+  for (const [seat, cardId] of [[0, 'HUKUM_K'], [1, 'HUKUM_Q'], [2, 'HUKUM_2'], [3, 'HUKUM_3']] as const) {
+    qEngine.playCard(seat, cardId);
+  }
+  assert(qState.players[0].score === 92, 'Engine: Q♠ adds 12 for a player who reached 75 mid-round (80 -> 92)');
+
   console.log('🎉 ALL BEGI PAKAD UNIT TESTS PASSED SUCCESSFULLY! 🎉');
 }
 

@@ -1,25 +1,37 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, TextInput,
-  SafeAreaView, Modal, ScrollView, StatusBar, ActivityIndicator,
-  Animated, Dimensions,
+  Modal, ScrollView, StatusBar, ActivityIndicator,
+  Animated, Dimensions, Share, KeyboardAvoidingView, Platform,
 } from 'react-native';
+// react-native's own SafeAreaView is iOS-only; Android (edge-to-edge) needs this one
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as ScreenOrientation from 'expo-screen-orientation';
-import { getSocket } from './src/networking/socket.js';
+import { getSocket, setSocketProfile } from './src/networking/socket.js';
+import { loadProfile, saveProfile } from './src/storage/profile.js';
 import MobileGameTable from './src/components/MobileGameTable.js';
 
 const { width: SW } = Dimensions.get('window');
 
-function genId() { return 'USR_' + Math.random().toString(36).substring(2, 8).toUpperCase(); }
-function genName() { return 'Player' + Math.floor(Math.random() * 9000 + 1000); }
+const DEFAULT_SERVER_URL = 'https://begipakad.bom1.is.cool';
 
-const STORED_ID = genId();
-const STORED_NAME = genName();
+// Expo keyboard guide: 'padding' works best on iOS; on Android the view alone keeps inputs visible
+const KEYBOARD_BEHAVIOR = Platform.OS === 'ios' ? 'padding' : undefined;
 
 export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
+  );
+}
+
+function AppContent() {
   const [view, setView] = useState('menu'); // menu | room_lobby | game
-  const [playerName, setPlayerName] = useState(STORED_NAME);
-  const [serverUrl, setServerUrl] = useState('https://begipakad.bom1.is.cool');
+  const [profile, setProfile] = useState(null); // { id, name, serverUrl } persisted on device
+  const [draftName, setDraftName] = useState('');
+  const [draftUrl, setDraftUrl] = useState('');
+  const [isConnected, setIsConnected] = useState(true);
   const [gameState, setGameState] = useState(null);
   const [roomInfo, setRoomInfo] = useState(null);
   const [isMatchmaking, setIsMatchmaking] = useState(false);
@@ -29,59 +41,111 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [isHost, setIsHost] = useState(false);
-  const profileId = useRef(STORED_ID);
+  const errorTimerRef = useRef(null);
+  const isMatchmakingRef = useRef(false);
+  isMatchmakingRef.current = isMatchmaking;
+
+  const playerName = profile ? profile.name : '';
+  const serverUrl = (profile && profile.serverUrl) || DEFAULT_SERVER_URL;
+
+  useEffect(() => {
+    loadProfile().then(setProfile);
+  }, []);
 
   useEffect(() => {
     if (view === 'game') {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {});
     } else {
-      ScreenOrientation.unlockAsync();
+      ScreenOrientation.unlockAsync().catch(() => {});
     }
   }, [view]);
 
   const showError = (msg) => {
     setErrorMsg(msg);
-    setTimeout(() => setErrorMsg(null), 4000);
+    // A newer error gets its full 4s instead of being cleared by the older timer
+    clearTimeout(errorTimerRef.current);
+    errorTimerRef.current = setTimeout(() => setErrorMsg(null), 4000);
   };
 
-  const initSocket = () => {
+  // Connect as soon as the profile is known, so the server can put us back into
+  // our room or game right after the app is (re)opened.
+  useEffect(() => {
+    if (!profile) return;
+    setSocketProfile(profile);
     const socket = getSocket(serverUrl);
-    socket.off('connect');
-    socket.off('room:created'); socket.off('room:joined'); socket.off('room:updated');
-    socket.off('room:closed'); socket.off('room:error'); socket.off('matchmaking:status');
-    socket.off('game:started'); socket.off('game:stateUpdate'); socket.off('game:ended');
-    socket.off('game:abandoned'); socket.off('error:message');
+    const myId = profile.id;
 
-    const handleConnect = () => {
-      socket.emit('user:init', { id: profileId.current, name: playerName, avatarSeed: 'avatar_1' });
+    const onConnect = () => {
+      setIsConnected(true);
+      // The server drops us from the queue when the connection is lost (e.g. app
+      // backgrounded); rejoin so matchmaking keeps going after a reconnect.
+      if (isMatchmakingRef.current) socket.emit('matchmaking:join');
     };
+    const onDisconnect = () => setIsConnected(false);
+    const onRoom = (room) => { setRoomInfo(room); setIsHost(room.hostPlayerId === myId); setView('room_lobby'); };
+    const onRoomUpdated = (room) => { setRoomInfo(room); setIsHost(room.hostPlayerId === myId); };
+    const onRoomClosed = (msg) => { showError(msg); setRoomInfo(null); setGameState(null); setView('menu'); };
+    const onMatchmakingStatus = (st) => { setIsMatchmaking(st.inQueue); setMmCount(st.playersCount); };
+    const onGameStarted = (state) => { setIsMatchmaking(false); setGameState(state); setView('game'); };
+    const onStateUpdate = (state) => { setGameState(state); setView(v => v === 'room_lobby' ? 'game' : v); };
+    const onAbandoned = (p) => { showError(p.message); setGameState(null); setRoomInfo(null); setIsHost(false); setView('menu'); };
 
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('room:created', onRoom);
+    socket.on('room:joined', onRoom);
+    socket.on('room:updated', onRoomUpdated);
+    socket.on('room:closed', onRoomClosed);
+    socket.on('room:error', showError);
+    socket.on('matchmaking:status', onMatchmakingStatus);
+    socket.on('game:started', onGameStarted);
+    socket.on('game:stateUpdate', onStateUpdate);
+    socket.on('game:abandoned', onAbandoned);
+    socket.on('error:message', showError);
+
+    // Already connected (e.g. name changed in settings): push the new profile
     if (socket.connected) {
-      handleConnect();
+      socket.emit('user:init', { id: profile.id, name: profile.name, avatarSeed: 'avatar_1' });
     }
-    socket.on('connect', handleConnect);
 
-    socket.on('room:created', (room) => { setRoomInfo(room); setIsHost(room.hostPlayerId === profileId.current); setView('room_lobby'); });
-    socket.on('room:joined', (room) => { setRoomInfo(room); setIsHost(room.hostPlayerId === profileId.current); setView('room_lobby'); });
-    socket.on('room:updated', (room) => { setRoomInfo(room); setIsHost(room.hostPlayerId === profileId.current); });
-    socket.on('room:closed', (msg) => { showError(msg); setRoomInfo(null); setGameState(null); setView('menu'); });
-    socket.on('room:error', (msg) => { showError(msg); });
-    socket.on('matchmaking:status', (s) => { setIsMatchmaking(s.inQueue); setMmCount(s.playersCount); });
-    socket.on('game:started', (state) => { setIsMatchmaking(false); setGameState(state); setView('game'); });
-    socket.on('game:stateUpdate', (state) => { setGameState(state); setView(v => v === 'room_lobby' ? 'game' : v); });
-    socket.on('game:ended', () => {});
-    socket.on('game:abandoned', (p) => { showError(p.message); setGameState(null); setRoomInfo(null); setView('menu'); });
-    socket.on('error:message', (msg) => { showError(msg); });
-    return socket;
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('room:created', onRoom);
+      socket.off('room:joined', onRoom);
+      socket.off('room:updated', onRoomUpdated);
+      socket.off('room:closed', onRoomClosed);
+      socket.off('room:error', showError);
+      socket.off('matchmaking:status', onMatchmakingStatus);
+      socket.off('game:started', onGameStarted);
+      socket.off('game:stateUpdate', onStateUpdate);
+      socket.off('game:abandoned', onAbandoned);
+      socket.off('error:message', showError);
+    };
+  }, [profile, serverUrl]);
+
+  const openSettings = () => {
+    setDraftName(playerName);
+    setDraftUrl(serverUrl);
+    setShowSettings(true);
   };
 
-  const handleCreateRoom = () => { const s = initSocket(); s.emit('room:create'); };
+  const handleSaveSettings = () => {
+    const name = draftName.trim() || playerName;
+    const url = draftUrl.trim() || DEFAULT_SERVER_URL;
+    const updated = { ...profile, name, serverUrl: url === DEFAULT_SERVER_URL ? null : url };
+    setProfile(updated);
+    saveProfile(updated);
+    setShowSettings(false);
+  };
+
+  const handleCreateRoom = () => { const s = getSocket(serverUrl); s.emit('room:create'); };
   const handleJoinRoom = () => {
     if (!joinInput.trim()) return;
-    const s = initSocket(); s.emit('room:join', joinInput.trim().toUpperCase());
+    const s = getSocket(serverUrl); s.emit('room:join', joinInput.trim().toUpperCase());
     setShowJoinModal(false); setJoinInput('');
   };
-  const handleMatchmaking = () => { const s = initSocket(); s.emit('matchmaking:join'); setIsMatchmaking(true); };
+  const handleMatchmaking = () => { const s = getSocket(serverUrl); s.emit('matchmaking:join'); setIsMatchmaking(true); };
   const handleCancelMM = () => { const s = getSocket(serverUrl); s.emit('matchmaking:leave'); setIsMatchmaking(false); };
   const handleLeaveRoom = () => { const s = getSocket(serverUrl); s.emit('room:leave'); setRoomInfo(null); setView('menu'); };
   const handleAddBot = (seat) => { const s = getSocket(serverUrl); s.emit('room:addBot', seat, 'medium'); };
@@ -101,10 +165,34 @@ export default function App() {
   const handleExitEnd = () => { const s = getSocket(serverUrl); s.emit('game:exitAndEnd'); };
   const handleHostEnd = () => { const s = getSocket(serverUrl); s.emit('game:hostEndGame'); };
   const handleQuickMsg = (text) => { const s = getSocket(serverUrl); s.emit('game:sendQuickMessage', text); };
-  const handleExitToMenu = () => { setView('menu'); setGameState(null); setRoomInfo(null); };
+  const handleExitToMenu = () => {
+    const s = getSocket(serverUrl);
+    s.emit('room:leave');
+    s.emit('matchmaking:leave');
+    setView('menu'); setGameState(null); setRoomInfo(null); setIsMatchmaking(false); setIsHost(false);
+  };
+
+  if (!profile) {
+    return (
+      <SafeAreaView style={[s.bg, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#6366F1" />
+      </SafeAreaView>
+    );
+  }
+
+  const errorBanner = errorMsg && (
+    <View style={s.errorBanner} pointerEvents="none"><Text style={s.errorText}>{errorMsg}</Text></View>
+  );
+
+  const reconnectBanner = !isConnected && view !== 'menu' && (
+    <View style={s.reconnectBanner} pointerEvents="none">
+      <Text style={s.reconnectText}>Connection lost. Reconnecting…</Text>
+    </View>
+  );
 
   if (view === 'game' && gameState) {
     return (
+      <View style={{ flex: 1 }}>
       <MobileGameTable
         gameState={gameState}
         onPlayCard={handlePlayCard}
@@ -115,16 +203,24 @@ export default function App() {
         onExitAndEndGame={handleExitEnd}
         onHostEndGame={handleHostEnd}
         onSendQuickMessage={handleQuickMsg}
-        isHost={isHost}
+        isHost={gameState.hostPlayerId ? gameState.hostPlayerId === profile.id : isHost}
         serverUrl={serverUrl}
       />
+      {errorBanner}
+      {reconnectBanner}
+      </View>
     );
   }
 
   if (view === 'room_lobby' && roomInfo) {
-    return <RoomLobby room={roomInfo} currentUserId={profileId.current} isHost={isHost}
-      onLeave={handleLeaveRoom} onAddBot={handleAddBot} onRemoveBot={handleRemoveBot}
-      onStart={handleStartGame} errorMsg={errorMsg} />;
+    return (
+      <View style={{ flex: 1 }}>
+        <RoomLobby room={roomInfo} currentUserId={profile.id} isHost={isHost}
+          onLeave={handleLeaveRoom} onAddBot={handleAddBot} onRemoveBot={handleRemoveBot}
+          onStart={handleStartGame} errorMsg={errorMsg} />
+        {reconnectBanner}
+      </View>
+    );
   }
 
   return (
@@ -139,7 +235,7 @@ export default function App() {
             <View style={s.avatar}><Text style={s.avatarText}>{playerName.slice(0,2).toUpperCase()}</Text></View>
             <Text style={s.profileName} numberOfLines={1}>{playerName}</Text>
           </View>
-          <TouchableOpacity style={s.iconBtn} onPress={() => setShowSettings(true)}>
+          <TouchableOpacity style={s.iconBtn} onPress={openSettings}>
             <Text style={s.iconBtnText}>⚙️</Text>
           </TouchableOpacity>
         </View>
@@ -202,8 +298,9 @@ export default function App() {
       </ScrollView>
 
       {/* Join Room Modal */}
-      <Modal visible={showJoinModal} transparent animationType="fade">
-        <View style={s.modalOverlay}>
+      <Modal visible={showJoinModal} transparent animationType="fade" onRequestClose={() => setShowJoinModal(false)}>
+        <KeyboardAvoidingView style={s.keyboardAvoid} behavior={KEYBOARD_BEHAVIOR}>
+        <ScrollView contentContainerStyle={s.modalOverlay} keyboardShouldPersistTaps="handled">
           <View style={s.modalBox}>
             <Text style={s.modalTitle}>Join Private Room</Text>
             <Text style={s.modalSub}>Enter 6-character Room ID</Text>
@@ -223,30 +320,40 @@ export default function App() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Settings Modal */}
-      <Modal visible={showSettings} transparent animationType="fade">
-        <View style={s.modalOverlay}>
+      <Modal visible={showSettings} transparent animationType="fade" onRequestClose={() => setShowSettings(false)}>
+        <KeyboardAvoidingView style={s.keyboardAvoid} behavior={KEYBOARD_BEHAVIOR}>
+        <ScrollView contentContainerStyle={s.modalOverlay} keyboardShouldPersistTaps="handled">
           <View style={s.modalBox}>
             <Text style={s.modalTitle}>Settings</Text>
             <Text style={s.inputLabel}>Your Name</Text>
-            <TextInput style={s.textInput} value={playerName} onChangeText={setPlayerName} placeholder="Your name" placeholderTextColor="#475569" />
+            <TextInput style={s.textInput} value={draftName} onChangeText={setDraftName} placeholder="Your name" placeholderTextColor="#475569" />
             <Text style={s.inputLabel}>Backend Server URL</Text>
-            <TextInput style={s.textInput} value={serverUrl} onChangeText={setServerUrl} placeholder="https://..." placeholderTextColor="#475569" autoCapitalize="none" />
-            <TouchableOpacity style={s.joinBtn} onPress={() => setShowSettings(false)}>
-              <Text style={s.joinBtnText}>Save & Close</Text>
-            </TouchableOpacity>
+            <TextInput style={s.textInput} value={draftUrl} onChangeText={setDraftUrl} placeholder="https://..." placeholderTextColor="#475569" autoCapitalize="none" />
+            <View style={s.modalBtns}>
+              <TouchableOpacity style={s.cancelBtn} onPress={() => setShowSettings(false)}>
+                <Text style={s.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.joinBtn} onPress={handleSaveSettings}>
+                <Text style={s.joinBtnText}>Save</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
 }
 
 function RoomLobby({ room, currentUserId, isHost, onLeave, onAddBot, onRemoveBot, onStart, errorMsg }) {
-  const [copied, setCopied] = useState(false);
+  const shareRoomId = () => {
+    Share.share({ message: `Join my Begi Pakad room: ${room.roomId}` }).catch(() => {});
+  };
   const isFull = room.players.length === 4;
   const seatSlots = [0,1,2,3].map(i => ({ seat: i, player: room.players.find(p => p.seatIndex === i), team: i%2===0?1:2 }));
 
@@ -270,8 +377,8 @@ function RoomLobby({ room, currentUserId, isHost, onLeave, onAddBot, onRemoveBot
           <Text style={s.roomCodeLabel}>Share this Room ID with friends</Text>
           <View style={{flexDirection:'row', alignItems:'center', gap:12, marginTop:6}}>
             <Text style={s.roomCode}>{room.roomId}</Text>
-            <TouchableOpacity style={s.copyBtn} onPress={() => setCopied(true)}>
-              <Text style={s.copyBtnText}>{copied ? '✓ Copied' : 'Copy'}</Text>
+            <TouchableOpacity style={s.copyBtn} onPress={shareRoomId}>
+              <Text style={s.copyBtnText}>Share</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -329,6 +436,8 @@ const s = StyleSheet.create({
   scroll: { padding:20, gap:20, flexGrow:1 },
   errorBanner: { position:'absolute', top:60, left:16, right:16, zIndex:100, backgroundColor:'#DC2626', padding:12, borderRadius:12, borderWidth:1, borderColor:'#F87171' },
   errorText: { color:'#FFF', fontSize:12, fontWeight:'bold', textAlign:'center' },
+  reconnectBanner: { position:'absolute', top:12, alignSelf:'center', zIndex:100, backgroundColor:'rgba(69,26,3,0.92)', paddingHorizontal:14, paddingVertical:8, borderRadius:999, borderWidth:1, borderColor:'rgba(245,158,11,0.5)' },
+  reconnectText: { color:'#FDE68A', fontSize:12, fontWeight:'bold' },
   topBar: { flexDirection:'row', justifyContent:'space-between', alignItems:'center' },
   profilePill: { flexDirection:'row', alignItems:'center', gap:8, backgroundColor:'#1E293B', borderWidth:1, borderColor:'#334155', borderRadius:999, paddingHorizontal:12, paddingVertical:6 },
   avatar: { width:24, height:24, borderRadius:12, backgroundColor:'#6366F1', justifyContent:'center', alignItems:'center' },
@@ -357,7 +466,8 @@ const s = StyleSheet.create({
   mmBadge: { color:'#FCD34D', fontSize:10, fontWeight:'600', backgroundColor:'rgba(245,158,11,0.15)', paddingHorizontal:8, paddingVertical:2, borderRadius:6, borderWidth:1, borderColor:'rgba(245,158,11,0.3)' },
   footer: { color:'#334155', fontSize:10, textAlign:'center', marginTop:8 },
   // Modal
-  modalOverlay: { flex:1, backgroundColor:'rgba(0,0,0,0.8)', justifyContent:'center', alignItems:'center', padding:20 },
+  keyboardAvoid: { flex:1, backgroundColor:'rgba(0,0,0,0.8)' },
+  modalOverlay: { flexGrow:1, justifyContent:'center', alignItems:'center', padding:20 },
   modalBox: { width:'100%', maxWidth:360, backgroundColor:'#1E293B', borderWidth:1, borderColor:'#334155', borderRadius:24, padding:24, gap:12 },
   modalTitle: { color:'#FFF', fontSize:18, fontWeight:'900' },
   modalSub: { color:'#64748B', fontSize:12, marginTop:-6 },

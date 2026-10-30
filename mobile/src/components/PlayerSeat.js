@@ -22,9 +22,10 @@ export default function PlayerSeat({ player, isCurrentTurn, isSelf, cardsCount, 
     <View style={[styles.seat, isHorizontal && styles.seatHoriz]}>
       {/* Toast */}
       {toastMsg ? (
-        <View style={styles.toast}>
+        // The north seat is at the table's top edge, so its bubble goes below the avatar
+        <View style={[styles.toast, position === 'top' && styles.toastBelow]}>
           <Text style={styles.toastText}>{toastMsg}</Text>
-          <View style={styles.toastArrow} />
+          <View style={[styles.toastArrow, position === 'top' && styles.toastArrowUp]} />
         </View>
       ) : null}
 
@@ -65,6 +66,8 @@ const styles = StyleSheet.create({
   seat: { alignItems: 'center', gap: 4 },
   seatHoriz: { alignItems: 'center' },
   toast: { position: 'absolute', top: -36, left: '50%', transform: [{ translateX: -50 }], backgroundColor: '#FBBF24', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, zIndex: 99, minWidth: 60, alignItems: 'center' },
+  toastBelow: { top: 52 },
+  toastArrowUp: { bottom: undefined, top: -5, borderTopWidth: 0, borderBottomWidth: 6, borderBottomColor: '#FBBF24' },
   toastText: { color: '#0F172A', fontWeight: '900', fontSize: 11 },
   toastArrow: { position: 'absolute', bottom: -5, left: '50%', width: 0, height: 0, borderLeftWidth: 5, borderRightWidth: 5, borderTopWidth: 6, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#FBBF24' },
   avatarWrap: { position: 'relative', width: 44, height: 44, borderRadius: 22, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },

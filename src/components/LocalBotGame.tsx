@@ -249,7 +249,7 @@ export const LocalBotGame: React.FC<LocalBotGameProps> = ({
             freshState.currentTrick,
             diff,
             currentSeat,
-            botPlayer.score,
+            botPlayer.roundStartScore ?? botPlayer.score,
             botPlayer.tricksWonThisHand,
           );
 
@@ -276,7 +276,7 @@ export const LocalBotGame: React.FC<LocalBotGameProps> = ({
   }
 
   return (
-    <div className="w-full h-screen h-[100dvh] bg-slate-950 flex flex-col items-center overflow-hidden">
+    <div className="w-full flex-1 min-h-0 bg-slate-950 flex flex-col items-center overflow-hidden">
       <GameTable
         gameState={clientState}
         onPlayCard={handleHumanPlayCard}
@@ -301,6 +301,7 @@ export const LocalBotGame: React.FC<LocalBotGameProps> = ({
         winnerTeam={clientState.winnerTeam}
         losingTeam={clientState.losingTeam}
         players={clientState.players}
+        handHistory={clientState.handHistory}
         myTeamId={1}
         onPlayAgain={startNewMatch}
         onExitToMenu={onExitToMenu}

@@ -122,9 +122,9 @@ export const TrickArea: React.FC<TrickAreaProps> = ({
   const winnerExitCoords = getWinnerExitCoords(winnerRelPos);
 
   return (
-    <div className="relative w-full max-w-lg h-48 xs:h-56 sm:h-64 flex flex-col items-center justify-center select-none">
+    <div className="relative w-full max-w-lg h-full max-h-48 xs:max-h-56 sm:max-h-64 min-h-[110px] flex flex-col items-center justify-center select-none">
       {/* Central circular guide ring */}
-      <div className="w-[220px] xs:w-[270px] sm:w-[360px] md:w-[420px] h-[160px] xs:h-[185px] sm:h-[230px] md:h-[260px] border border-white/10 rounded-full flex items-center justify-center relative backdrop-blur-[2px]">
+      <div className="w-full max-w-[220px] xs:max-w-[270px] sm:max-w-[360px] md:max-w-[420px] h-full max-h-[160px] xs:max-h-[185px] sm:max-h-[230px] md:max-h-[260px] border border-white/10 rounded-full flex items-center justify-center relative backdrop-blur-[2px]">
         {/* Center Table Cloth Logo & Lead Suit Indicator */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           {leadSuitInfo ? (
@@ -229,7 +229,7 @@ export const TrickArea: React.FC<TrickAreaProps> = ({
                   className={`absolute ${posStyle} flex flex-col items-center drop-shadow-2xl`}
                 >
                   <Card card={played.card} rotation={rotation} size="sm" />
-                  <span className="text-[9px] font-bold text-slate-200 mt-1 bg-slate-900/90 border border-slate-700/80 px-2 py-0.5 rounded-full shadow-md">
+                  <span className="short:hidden text-[9px] font-bold text-slate-200 mt-1 bg-slate-900/90 border border-slate-700/80 px-2 py-0.5 rounded-full shadow-md">
                     {playerObj?.name || `P${played.seatIndex + 1}`}
                   </span>
                 </motion.div>
@@ -241,7 +241,7 @@ export const TrickArea: React.FC<TrickAreaProps> = ({
 
       {/* Action commentary ticker */}
       {lastActionMessage && (
-        <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 max-w-[90%] bg-slate-900/95 text-slate-200 text-[11px] font-semibold px-4 py-1 rounded-full border border-slate-700 shadow-xl truncate text-center z-30">
+        <div className="absolute -bottom-2.5 compact:bottom-0 left-1/2 -translate-x-1/2 max-w-[90%] bg-slate-900/95 text-slate-200 text-[11px] font-semibold px-4 py-1 rounded-full border border-slate-700 shadow-xl truncate text-center z-30">
           {lastActionMessage}
         </div>
       )}

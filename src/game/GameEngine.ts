@@ -20,7 +20,7 @@ import {
 
 export class GameEngine {
   private state: FullGameState;
-  private handStartScores: Record<number, number> = {};
+  private passingDeadline = 0; // ms timestamp; clients count down to it, the server auto-passes at it
 
   constructor(players: Player[], gameId?: string, roomId?: string) {
     if (players.length !== 4) {
@@ -114,7 +114,10 @@ export class GameEngine {
         targetRecipientSeatIndex: recipientSeat,
         targetRecipientScore: recipientScore,
         targetRecipientCanReceivePaan: canReceivePaan,
-        timeRemainingSeconds: this.state.passingState.timeRemainingSeconds,
+        timeRemainingSeconds:
+          this.state.phase === 'PASSING'
+            ? Math.max(0, Math.ceil((this.passingDeadline - Date.now()) / 1000))
+            : this.state.passingState.timeRemainingSeconds,
       },
       lastReceivedPassedCards: this.state.lastReceivedPassedCards?.[seatIndex],
       currentTrick: this.state.currentTrick,
@@ -144,6 +147,7 @@ export class GameEngine {
       timeRemainingSeconds: 120,
     };
     this.state.lastReceivedPassedCards = undefined;
+    this.passingDeadline = Date.now() + this.state.passingState.timeRemainingSeconds * 1000;
     this.state.currentTrick = {
       trickNumber: 1,
       leadSuit: null,
@@ -151,13 +155,12 @@ export class GameEngine {
       cards: [],
     };
     this.state.currentTurnSeatIndex = leaderSeatIndex;
-    this.state.lastActionMessage = `Hand ${handNumber}: 13 cards dealt. Please select 5 cards to pass.`;
+    this.state.lastActionMessage = `Round ${handNumber}: 13 cards dealt. Please select 5 cards to pass.`;
 
-    this.handStartScores = {};
     for (const player of this.state.players) {
       player.tricksWonThisHand = 0;
       player.cardsRemaining = 13;
-      this.handStartScores[player.seatIndex] = player.score;
+      player.roundStartScore = player.score;
     }
   }
 
@@ -268,6 +271,11 @@ export class GameEngine {
         error: `Not your turn. Current turn: Player ${this.state.currentTurnSeatIndex + 1}`,
       };
     }
+    // A full trick stays on the table until finalizeCompletedTrick(); the last player
+    // to play still holds the turn during that window, so block any further card.
+    if (this.state.currentTrick.cards.length >= 4) {
+      return { success: false, error: 'Trick is being collected. Wait for the next Ser.' };
+    }
 
     const hand = this.state.playerHands[seatIndex] || [];
     const card = hand.find((c) => c.id === cardId);
@@ -309,7 +317,12 @@ export class GameEngine {
 
       // 2. Calculate scoring points (Paan + Begum Hukum with 75-point rule)
       const trickCards = trick.cards.map((p) => p.card);
-      const scoreResult = calculateTrickPoints(trickCards, winnerSeatIndex, winnerPlayer.score);
+      const scoreResult = calculateTrickPoints(
+        trickCards,
+        winnerSeatIndex,
+        winnerPlayer.score,
+        winnerPlayer.roundStartScore ?? winnerPlayer.score,
+      );
 
       trick.pointsAwarded = {
         playerId: winnerPlayer.id,
@@ -343,10 +356,25 @@ export class GameEngine {
     isGameOver?: boolean;
   } {
     const trick = this.state.currentTrick;
+    // Already finalized (or never completed): don't push the trick or advance twice
+    if (this.state.phase !== 'PLAYER_TURN' || trick.cards.length < 4) {
+      return { completedTrick: trick, isGameOver: this.state.phase === 'GAME_COMPLETE' };
+    }
     const winnerSeatIndex = trick.winnerSeatIndex ?? 0;
     const winnerPlayer = this.state.players[winnerSeatIndex];
 
     this.state.trickHistory.push(trick);
+
+    // Check if 13 tricks in this hand are completed. This must come before the 100-point
+    // check so the Zero-Ser -5 still applies when the game ends on the last Ser.
+    if (this.state.currentTrickNumber === 13) {
+      const handResult = this.resolveHandCompletion(true);
+      return {
+        completedTrick: trick,
+        handResult,
+        isGameOver: handResult.losingTeam !== undefined,
+      };
+    }
 
     // Check if score reached >= 100 immediately
     const scoresMap: Record<number, number> = {};
@@ -356,24 +384,14 @@ export class GameEngine {
 
     const lossCheck = checkGameLoss(scoresMap);
     if (lossCheck.isGameOver) {
-      this.state.phase = 'GAME_COMPLETE';
-      this.state.losingTeam = lossCheck.losingTeam;
-      this.state.winnerTeam = lossCheck.winnerTeam;
+      // Record the unfinished round so the round-wise scorecard adds up to the final scores
+      const handResult = this.resolveHandCompletion(false);
       this.state.lastActionMessage = `Game Over! ${winnerPlayer.name} reached ${winnerPlayer.score} points. Team ${lossCheck.losingTeam} loses!`;
 
       return {
         completedTrick: trick,
-        isGameOver: true,
-      };
-    }
-
-    // Check if 13 tricks in this hand are completed
-    if (this.state.currentTrickNumber === 13) {
-      const handResult = this.resolveHandCompletion();
-      return {
-        completedTrick: trick,
         handResult,
-        isGameOver: this.state.phase === 'GAME_COMPLETE',
+        isGameOver: true,
       };
     }
 
@@ -394,7 +412,8 @@ export class GameEngine {
     };
   }
 
-  private resolveHandCompletion(): HandScoreResult {
+  // isFullHand: all 13 Ser were played, so the Zero-Ser -5 applies
+  private resolveHandCompletion(isFullHand: boolean): HandScoreResult {
     const startScores: Record<number, number> = {};
     const trickPointsGained: Record<number, number> = {};
     const tricksWon: Record<number, number> = {};
@@ -403,7 +422,7 @@ export class GameEngine {
 
     for (const p of this.state.players) {
       const s = p.seatIndex;
-      const initialScore = this.handStartScores[s] ?? 0;
+      const initialScore = p.roundStartScore ?? 0;
       startScores[s] = initialScore;
       // Points gained during tricks of this hand before zero-ser bonus calculation
       trickPointsGained[s] = p.score - initialScore;
@@ -414,7 +433,7 @@ export class GameEngine {
     for (const p of this.state.players) {
       const s = p.seatIndex;
       const zeroCheck = checkZeroSerBonus(p.tricksWonThisHand, p.score);
-      if (zeroCheck.pointsDelta < 0) {
+      if (isFullHand && zeroCheck.pointsDelta < 0) {
         zeroBonus[s] = true;
         p.score = zeroCheck.newScore;
       } else {
@@ -433,6 +452,7 @@ export class GameEngine {
       finalScores,
       losingTeam: lossCheck.losingTeam ?? undefined,
       losingPlayers: lossCheck.losingPlayers,
+      ...(isFullHand ? {} : { isPartial: true }),
     };
 
     this.state.handHistory.push(handResult);
@@ -441,10 +461,10 @@ export class GameEngine {
       this.state.phase = 'GAME_COMPLETE';
       this.state.losingTeam = lossCheck.losingTeam;
       this.state.winnerTeam = lossCheck.winnerTeam;
-      this.state.lastActionMessage = `Game Over after Hand ${this.state.handNumber}! Team ${lossCheck.losingTeam} reached 100+ points and loses.`;
+      this.state.lastActionMessage = `Game Over after Round ${this.state.handNumber}! Team ${lossCheck.losingTeam} reached 100+ points and loses.`;
     } else {
       this.state.phase = 'HAND_COMPLETE';
-      this.state.lastActionMessage = `Hand ${this.state.handNumber} completed! Ready for Hand ${this.state.handNumber + 1}.`;
+      this.state.lastActionMessage = `Round ${this.state.handNumber} completed! Ready for Round ${this.state.handNumber + 1}.`;
     }
 
     return handResult;

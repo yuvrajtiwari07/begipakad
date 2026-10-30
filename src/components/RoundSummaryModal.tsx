@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Player, HandScoreResult } from '../game/types';
 import { Award, Flame, ShieldAlert, ArrowRight, Trophy } from 'lucide-react';
 import { sounds } from '../services/audio';
+import { formatDelta, getRoundDelta } from './ScoreTable';
 
 export interface RoundSummaryModalProps {
   isOpen: boolean;
@@ -38,7 +39,7 @@ export const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in zoom-in-95 font-sans select-none">
-      <div className="relative w-full max-w-lg bg-[#1E293B] border border-slate-700 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 text-slate-100">
+      <div className="relative w-full max-w-lg max-h-full overflow-y-auto no-scrollbar bg-[#1E293B] border border-slate-700 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 text-slate-100">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700/80 pb-3">
           <div className="flex items-center gap-2.5">
@@ -50,13 +51,13 @@ export const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
                 ROUND {handResult.handNumber} SCORE RECAP
               </h2>
               <p className="text-[11px] text-slate-400">
-                13 Ser completed • Hand Score Breakdown
+                13 Ser completed • Round Score Breakdown
               </p>
             </div>
           </div>
 
           <div className="bg-indigo-600/30 border border-indigo-400/40 text-indigo-300 text-xs font-mono font-bold px-3 py-1 rounded-full">
-            Hand #{handResult.handNumber}
+            Round #{handResult.handNumber}
           </div>
         </div>
 
@@ -108,7 +109,7 @@ export const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
           {activeTab === 'round' && (
             <div className="space-y-3 animate-in fade-in">
               <div className="text-xs text-slate-400 font-medium">
-                Points taken in Round {handResult.handNumber} (Begum Q♠ + Paan ♥):
+                Points in Round {handResult.handNumber} (Begum Q♠ + Paan ♥, Zero Ser -5):
               </div>
               <div className="grid grid-cols-2 gap-2.5">
                 {/* Team 1 */}
@@ -116,16 +117,16 @@ export const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
                   <div className="flex items-center justify-between text-xs font-bold text-indigo-400 border-b border-slate-800 pb-1">
                     <span>TEAM 1</span>
                     <span className="font-mono text-indigo-300">
-                      +{team1Players.reduce((acc, p) => acc + (handResult.trickPointsGained[p.seatIndex] ?? 0), 0)} pts
+                      {formatDelta(team1Players.reduce((acc, p) => acc + getRoundDelta(handResult, p.seatIndex), 0))} pts
                     </span>
                   </div>
                   {team1Players.map((p) => {
-                    const gained = handResult.trickPointsGained[p.seatIndex] ?? 0;
+                    const delta = getRoundDelta(handResult, p.seatIndex);
                     return (
                       <div key={p.id} className="flex justify-between items-center text-xs">
                         <span className="text-slate-300 font-medium">{p.name}</span>
-                        <span className={`font-mono font-bold ${gained > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                          +{gained}
+                        <span className={`font-mono font-bold ${delta > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                          {formatDelta(delta)}
                         </span>
                       </div>
                     );
@@ -137,16 +138,16 @@ export const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
                   <div className="flex items-center justify-between text-xs font-bold text-amber-400 border-b border-slate-800 pb-1">
                     <span>TEAM 2</span>
                     <span className="font-mono text-amber-300">
-                      +{team2Players.reduce((acc, p) => acc + (handResult.trickPointsGained[p.seatIndex] ?? 0), 0)} pts
+                      {formatDelta(team2Players.reduce((acc, p) => acc + getRoundDelta(handResult, p.seatIndex), 0))} pts
                     </span>
                   </div>
                   {team2Players.map((p) => {
-                    const gained = handResult.trickPointsGained[p.seatIndex] ?? 0;
+                    const delta = getRoundDelta(handResult, p.seatIndex);
                     return (
                       <div key={p.id} className="flex justify-between items-center text-xs">
                         <span className="text-slate-300 font-medium">{p.name}</span>
-                        <span className={`font-mono font-bold ${gained > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                          +{gained}
+                        <span className={`font-mono font-bold ${delta > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                          {formatDelta(delta)}
                         </span>
                       </div>
                     );
